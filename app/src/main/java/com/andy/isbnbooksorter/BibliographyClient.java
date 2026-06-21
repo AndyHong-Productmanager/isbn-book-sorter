@@ -24,6 +24,10 @@ final class BibliographyClient {
         void onMissing(String message);
     }
 
+    private interface LookupSource {
+        Book find() throws Exception;
+    }
+
     private static final String EMPTY = "";
     private final String nationalLibraryKey;
     private final String aladinKey;
@@ -38,26 +42,27 @@ final class BibliographyClient {
 
     void lookup(String isbn, Callback callback) {
         executor.execute(() -> {
-            try {
-                Book nationalLibraryBook = findNationalLibraryBook(isbn);
-                if (nationalLibraryBook != null) {
-                    callback.onFound(new BookLookupResult(nationalLibraryBook, false));
-                    return;
-                }
-                Book aladinBook = findAladinBook(isbn);
-                if (aladinBook != null) {
-                    callback.onFound(new BookLookupResult(aladinBook, false));
-                    return;
-                }
-                Book googleBook = findGoogleBook(isbn);
-                if (googleBook != null) {
-                    callback.onFound(new BookLookupResult(googleBook, true));
-                    return;
-                }
-                callback.onMissing("서지정보를 찾지 못했습니다.");
-            } catch (Exception exception) {
-                callback.onMissing("조회 실패: " + exception.getMessage());
+            Book nationalLibraryBook = tryLookup(() -> findNationalLibraryBook(isbn));
+            if (nationalLibraryBook != null) {
+                callback.onFound(new BookLookupResult(nationalLibraryBook, false));
+                return;
             }
+            Book aladinBook = tryLookup(() -> findAladinBook(isbn));
+            if (aladinBook != null) {
+                callback.onFound(new BookLookupResult(aladinBook, false));
+                return;
+            }
+            Book googleBook = tryLookup(() -> findGoogleBook(isbn));
+            if (googleBook != null) {
+                callback.onFound(new BookLookupResult(googleBook, true));
+                return;
+            }
+            Book openLibraryBook = tryLookup(() -> findOpenLibraryBook(isbn));
+            if (openLibraryBook != null) {
+                callback.onFound(new BookLookupResult(openLibraryBook, true));
+                return;
+            }
+            callback.onMissing("서지정보를 찾지 못했습니다. ISBN 또는 API 키를 확인하세요.");
         });
     }
 
@@ -139,6 +144,34 @@ final class BibliographyClient {
                 "Google Books");
     }
 
+    private Book findOpenLibraryBook(String isbn) throws Exception {
+        String key = "ISBN:" + isbn;
+        String url = "https://openlibrary.org/api/books?bibkeys="
+                + encode(key)
+                + "&format=json&jscmd=data";
+        JSONObject root = readJson(url);
+        JSONObject item = root.optJSONObject(key);
+        if (item == null) {
+            return null;
+        }
+        return new Book(
+                isbn,
+                item.optString("title", "제목 없음"),
+                joinNames(item.optJSONArray("authors")),
+                joinNames(item.optJSONArray("publishers")),
+                item.optString("publish_date", ""),
+                firstName(item.optJSONArray("subjects")),
+                "Open Library");
+    }
+
+    private static Book tryLookup(LookupSource source) {
+        try {
+            return source.find();
+        } catch (Exception exception) {
+            return null;
+        }
+    }
+
     private static JSONObject readJson(String urlValue) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(urlValue).openConnection();
         connection.setConnectTimeout(10_000);
@@ -203,5 +236,38 @@ final class BibliographyClient {
             return "미분류";
         }
         return category;
+    }
+
+    private static String joinNames(JSONArray objects) {
+        if (objects == null) {
+            return "";
+        }
+        List<String> values = new ArrayList<>();
+        for (int index = 0; index < objects.length(); index += 1) {
+            JSONObject object = objects.optJSONObject(index);
+            if (object == null) {
+                continue;
+            }
+            String name = object.optString("name", EMPTY).trim();
+            if (!name.isEmpty()) {
+                values.add(name);
+            }
+        }
+        return String.join(", ", values);
+    }
+
+    private static String firstName(JSONArray objects) {
+        if (objects == null || objects.length() == 0) {
+            return "미분류";
+        }
+        JSONObject object = objects.optJSONObject(0);
+        if (object == null) {
+            return "미분류";
+        }
+        String name = object.optString("name", EMPTY).trim();
+        if (name.isEmpty()) {
+            return "미분류";
+        }
+        return name;
     }
 }
