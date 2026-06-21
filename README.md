@@ -1,27 +1,45 @@
 # ISBN Book Sorter
 
-Android APK for scanning ISBN barcodes and organizing books by category.
+휴대폰 카메라로 ISBN 바코드를 스캔하고, 조회된 책을 카테고리별로 저장하는 Android APK입니다.
 
-## API keys
+## 주요 기능
 
-API keys are intentionally blank for now:
+- ISBN 바코드 스캔
+- ISBN 직접 입력
+- 카테고리별 도서 저장
+- 로컬 SQLite 저장
+- 국내 서지 API 키를 나중에 넣을 수 있는 빈칸 제공
+- 국내 API 키가 비어 있으면 Google Books fallback 조회
 
-- `app/src/main/res/values/api_keys.xml`
+## API 키 설정
 
-Lookup order:
+API 키는 현재 비워둔 상태입니다.
 
-1. National Library of Korea ISBN API, when `national_library_key` is set.
-2. Aladin Open API, when `aladin_ttb_key` is set.
-3. Google Books fallback without a key, or with `google_books_key` if Google quota requires it later.
+설정 파일:
 
-## Build
+```text
+app/src/main/res/values/api_keys.xml
+```
+
+조회 순서:
+
+1. `national_library_key`가 있으면 국립중앙도서관 ISBN API를 먼저 사용합니다.
+2. `aladin_ttb_key`가 있으면 알라딘 Open API를 다음으로 사용합니다.
+3. 국내 API 키가 없으면 Google Books를 fallback으로 사용합니다.
+4. Google Books 무키 요청이 quota 문제를 내면 `google_books_key`를 나중에 넣을 수 있습니다.
+
+## APK 빌드
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-The debug APK is written to:
+빌드 결과:
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## GitHub Release
+
+배포 APK는 GitHub Release에 업로드합니다.
