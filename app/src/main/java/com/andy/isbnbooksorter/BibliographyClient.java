@@ -62,7 +62,7 @@ final class BibliographyClient {
                 callback.onFound(new BookLookupResult(openLibraryBook, true));
                 return;
             }
-            callback.onMissing("서지정보를 찾지 못했습니다. ISBN 또는 API 키를 확인하세요.");
+            callback.onMissing("검색 결과가 없습니다. ISBN 또는 API 키를 확인하세요.");
         });
     }
 

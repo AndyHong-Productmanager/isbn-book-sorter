@@ -10,6 +10,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
@@ -70,7 +71,7 @@ public final class MainActivity extends ComponentActivity {
         root.setPadding(ui.dp(16), ui.dp(18), ui.dp(16), ui.dp(24));
         scroll.addView(root);
 
-        TextView title = ui.text("ISBN Book Sorter", 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
+        TextView title = ui.text("ISBN 도서 정리", 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         root.addView(title);
         root.addView(ui.text("ISBN을 스캔하거나 직접 입력하면 카테고리별로 저장됩니다.", 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
 
@@ -110,6 +111,9 @@ public final class MainActivity extends ComponentActivity {
         root.addView(scanActions);
 
         statusText = ui.text("", 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL);
+        statusText.setMinHeight(ui.dp(40));
+        statusText.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8));
+        statusText.setBackgroundColor(UiKit.SURFACE_SECONDARY);
         root.addView(statusText);
         renderKeyStatus(root);
         renderManualInput(root);
@@ -130,7 +134,7 @@ public final class MainActivity extends ComponentActivity {
     private void renderKeyStatus(LinearLayout root) {
         String message = client.hasDomesticKey()
                 ? "국내 API 키가 설정되어 국내 서지 조회를 먼저 사용합니다."
-                : "국내 API 키가 비어 있어 Google Books fallback으로 조회합니다.";
+                : "국내 API 키가 비어 있어 Google Books와 Open Library로 대체 조회합니다.";
         int color = client.hasDomesticKey() ? UiKit.ACCENT_PRIMARY : UiKit.STATUS_WARNING;
         root.addView(ui.text(message, 13, color, Typeface.BOLD));
     }
@@ -151,7 +155,7 @@ public final class MainActivity extends ComponentActivity {
         lookupButton.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
-        lookupButton.setOnClickListener(view -> lookup(IsbnUtils.normalize(isbnInput.getText().toString())));
+        lookupButton.setOnClickListener(view -> lookupManualInput());
         panel.addView(isbnInput);
         panel.addView(categoryInput);
         panel.addView(lookupButton);
@@ -169,10 +173,10 @@ public final class MainActivity extends ComponentActivity {
 
     private void lookup(String isbn) {
         if (!IsbnUtils.isValid(isbn)) {
-            status("ISBN 10자리 또는 13자리를 입력하세요.", UiKit.STATUS_ERROR);
+            status("ISBN 형식에 맞지 않습니다. 숫자 10자리 또는 13자리를 입력하세요.", UiKit.STATUS_ERROR);
             return;
         }
-        status("서지정보 조회 중: " + isbn, UiKit.TEXT_SECONDARY);
+        status("찾고 있습니다: " + isbn, UiKit.TEXT_SECONDARY);
         client.lookup(isbn, new BibliographyClient.Callback() {
             @Override
             public void onFound(BookLookupResult result) {
@@ -184,6 +188,20 @@ public final class MainActivity extends ComponentActivity {
                 runOnUiThread(() -> status(message, UiKit.STATUS_ERROR));
             }
         });
+    }
+
+    private void lookupManualInput() {
+        String rawValue = isbnInput.getText().toString().trim();
+        if (rawValue.isEmpty()) {
+            status("ISBN을 입력하세요.", UiKit.STATUS_ERROR);
+            return;
+        }
+        String isbn = IsbnUtils.normalize(rawValue);
+        if (!IsbnUtils.isValid(isbn)) {
+            status("ISBN 형식에 맞지 않습니다. 숫자 10자리 또는 13자리를 입력하세요.", UiKit.STATUS_ERROR);
+            return;
+        }
+        lookup(isbn);
     }
 
     private void saveResult(BookLookupResult result) {
@@ -203,8 +221,8 @@ public final class MainActivity extends ComponentActivity {
         isbnInput.setText("");
         categoryInput.setText("");
         renderBooks();
-        String fallbackNote = result.fallbackUsed ? " Google Books fallback 사용." : "";
-        status("저장 완료: " + book.title + "." + fallbackNote, UiKit.ACCENT_PRIMARY);
+        String fallbackNote = result.fallbackUsed ? " (" + book.source + " 대체 조회)" : "";
+        status("저장 완료: " + book.title + fallbackNote, UiKit.ACCENT_PRIMARY);
     }
 
     private void renderBooks() {
@@ -220,6 +238,7 @@ public final class MainActivity extends ComponentActivity {
         }
         statusText.setText(message);
         statusText.setTextColor(color);
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     private boolean hasCameraPermission() {

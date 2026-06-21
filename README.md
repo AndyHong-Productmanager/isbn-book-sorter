@@ -38,7 +38,7 @@ app/src/main/res/values/api_keys.xml
 빌드 결과:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/debug/isbn-book-sorter-0.1.3-debug.apk
 ```
 
 ## 깃허브 릴리즈
