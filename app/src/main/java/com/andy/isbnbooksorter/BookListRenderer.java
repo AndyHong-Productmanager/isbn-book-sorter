@@ -103,6 +103,23 @@ final class BookListRenderer {
                     UiKit.TEXT_SECONDARY,
                     Typeface.NORMAL));
         }
+        if (!book.form.isEmpty() || !book.bookSize.isEmpty()) {
+            row.addView(ui.text(
+                    "형태: " + display(book.form)
+                            + " · 크기: " + display(book.bookSize),
+                    12,
+                    UiKit.TEXT_SECONDARY,
+                    Typeface.NORMAL));
+        }
+        if (!book.eaAddCode.isEmpty() || !book.inputDate.isEmpty() || !book.updateDate.isEmpty()) {
+            row.addView(ui.text(
+                    "등록: 부가기호 " + display(book.eaAddCode)
+                            + " · 입력 " + display(book.inputDate)
+                            + " · 수정 " + display(book.updateDate),
+                    12,
+                    UiKit.TEXT_SECONDARY,
+                    Typeface.NORMAL));
+        }
         TextView isbn = ui.text(
                 "ISBN " + book.isbn + " · 출처 " + display(book.source) + " · 저장 " + formatSavedAt(book.savedAt),
                 12,

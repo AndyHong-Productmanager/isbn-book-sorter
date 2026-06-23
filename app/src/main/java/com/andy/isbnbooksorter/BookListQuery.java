@@ -71,7 +71,21 @@ final class BookListQuery {
                 book.contents,
                 book.introduction,
                 book.language,
-                book.price));
+                book.price,
+                book.bookSize,
+                book.form,
+                book.formDetail,
+                book.seriesTitle,
+                book.seriesNo,
+                book.relatedIsbn,
+                book.titleUrl,
+                book.eaIsbn,
+                book.eaAddCode,
+                book.inputDate,
+                book.updateDate,
+                book.bibYn,
+                book.depositYn,
+                book.ebookYn));
         for (String token : tokens) {
             if (!token.isEmpty() && !searchable.contains(token)) {
                 return false;

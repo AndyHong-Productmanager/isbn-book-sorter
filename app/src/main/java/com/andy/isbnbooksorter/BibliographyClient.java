@@ -101,24 +101,46 @@ final class BibliographyClient {
             return null;
         }
         JSONObject doc = docs.getJSONObject(0);
+        return nationalBookFromJson(isbn, doc);
+    }
+
+    static Book nationalBookFromJson(String isbn, JSONObject doc) {
+        return nationalBookFromFields(isbn, key -> doc.optString(key, EMPTY));
+    }
+
+    static Book nationalBookFromFields(String isbn, FieldReader reader) {
         return new Book(
                 isbn,
-                firstNonEmpty(doc, "제목 없음", "TITLE", "title", "bookname"),
-                firstNonEmpty(doc, "", "SUB_TITLE", "subtitle", "subTitle"),
-                firstNonEmpty(doc, "", "AUTHOR", "author"),
-                firstNonEmpty(doc, "", "TRANSLATOR", "translator", "TRSLTOR", "translatedBy"),
-                firstNonEmpty(doc, "", "PUBLISHER", "publisher"),
-                firstNonEmpty(doc, "", "PUBLISH_PREDATE", "publishPredate", "publishDate"),
-                firstNonEmpty(doc, "미분류", "SUBJECT", "subject", "KDC", "class_no"),
+                firstNonEmpty(reader, "제목 없음", "TITLE", "title", "bookname"),
+                firstNonEmpty(reader, "", "SUB_TITLE", "subtitle", "subTitle"),
+                firstNonEmpty(reader, "", "AUTHOR", "author"),
+                firstNonEmpty(reader, "", "TRANSLATOR", "translator", "TRSLTOR", "translatedBy"),
+                firstNonEmpty(reader, "", "PUBLISHER", "publisher"),
+                firstNonEmpty(reader, "", "REAL_PUBLISH_DATE", "PUBLISH_PREDATE", "publishPredate", "publishDate"),
+                firstNonEmpty(reader, "미분류", "SUBJECT", "subject", "KDC", "class_no"),
                 "국립중앙도서관",
-                firstNonEmpty(doc, "", "DESCRIPTION", "description", "ABSTRACT", "abstract"),
-                firstNonEmpty(doc, "", "TOC", "toc", "TABLE_OF_CONTENTS", "tableOfContents"),
-                firstNonEmpty(doc, "", "CONTENTS", "contents", "CONTENT", "content", "SUMMARY", "summary"),
-                firstNonEmpty(doc, "", "INTRODUCTION", "introduction", "BOOK_INTRODUCTION", "bookIntroduction"),
-                firstInt(doc, "PAGE", "PAGE_CNT", "page", "pageCount"),
-                firstNonEmpty(doc, "", "IMAGE", "image", "COVER_URL", "coverUrl", "thumbnailUrl"),
-                firstNonEmpty(doc, "", "LANG", "language"),
-                firstNonEmpty(doc, "", "PRICE", "price"),
+                firstNonEmpty(reader, "", "DESCRIPTION", "description", "ABSTRACT", "abstract"),
+                firstNonEmpty(reader, "", "BOOK_TB_CNT", "TOC", "toc", "TABLE_OF_CONTENTS", "tableOfContents"),
+                firstNonEmpty(reader, "", "BOOK_SUMMARY", "CONTENTS", "contents", "CONTENT", "content", "SUMMARY", "summary"),
+                firstNonEmpty(reader, "", "INTRODUCTION", "introduction", "BOOK_INTRODUCTION", "bookIntroduction"),
+                firstInt(reader, "PAGE", "PAGE_CNT", "page", "pageCount"),
+                firstNonEmpty(reader, "", "IMAGE", "image", "COVER_URL", "coverUrl", "thumbnailUrl"),
+                firstNonEmpty(reader, "", "LANG", "language"),
+                firstNonEmpty(reader, "", "PRE_PRICE", "REAL_PRICE", "PRICE", "price"),
+                firstNonEmpty(reader, "", "BOOK_SIZE", "bookSize"),
+                firstNonEmpty(reader, "", "FORM", "form"),
+                firstNonEmpty(reader, "", "FORM_DETAIL", "formDetail"),
+                firstNonEmpty(reader, "", "SERIES_TITLE", "seriesTitle"),
+                firstNonEmpty(reader, "", "SERIES_NO", "seriesNo"),
+                firstNonEmpty(reader, "", "RELATED_ISBN", "relatedIsbn"),
+                firstNonEmpty(reader, "", "TITLE_URL", "titleUrl"),
+                firstNonEmpty(reader, "", "EA_ISBN", "eaIsbn"),
+                firstNonEmpty(reader, "", "EA_ADD_CODE", "eaAddCode"),
+                firstNonEmpty(reader, "", "INPUT_DATE", "inputDate"),
+                firstNonEmpty(reader, "", "UPDATE_DATE", "updateDate"),
+                firstNonEmpty(reader, "", "BIB_YN", "bibYn"),
+                firstNonEmpty(reader, "", "DEPOSIT_YN", "depositYn"),
+                firstNonEmpty(reader, "", "EBOOK_YN", "ebookYn"),
                 0L);
     }
 
@@ -156,6 +178,20 @@ final class BibliographyClient {
                 item.optString("cover", ""),
                 "",
                 firstNonEmpty(item, "", "priceStandard", "priceSales"),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 0L);
     }
 
@@ -188,6 +224,20 @@ final class BibliographyClient {
                 thumbnailFromGoogle(volume),
                 volume.optString("language", ""),
                 "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 0L);
     }
 
@@ -217,6 +267,20 @@ final class BibliographyClient {
                 firstExcerptFromOpenLibrary(item),
                 numberOfPagesFromOpenLibrary(item),
                 thumbnailFromOpenLibrary(item),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 "",
                 "",
                 0L);
@@ -254,6 +318,20 @@ final class BibliographyClient {
                     firstFilled(merged.thumbnailUrl, extra.thumbnailUrl),
                     firstFilled(merged.language, extra.language),
                     firstFilled(merged.price, extra.price),
+                    firstFilled(merged.bookSize, extra.bookSize),
+                    firstFilled(merged.form, extra.form),
+                    firstFilled(merged.formDetail, extra.formDetail),
+                    firstFilled(merged.seriesTitle, extra.seriesTitle),
+                    firstFilled(merged.seriesNo, extra.seriesNo),
+                    firstFilled(merged.relatedIsbn, extra.relatedIsbn),
+                    firstFilled(merged.titleUrl, extra.titleUrl),
+                    firstFilled(merged.eaIsbn, extra.eaIsbn),
+                    firstFilled(merged.eaAddCode, extra.eaAddCode),
+                    firstFilled(merged.inputDate, extra.inputDate),
+                    firstFilled(merged.updateDate, extra.updateDate),
+                    firstFilled(merged.bibYn, extra.bibYn),
+                    firstFilled(merged.depositYn, extra.depositYn),
+                    firstFilled(merged.ebookYn, extra.ebookYn),
                     merged.savedAt);
         }
         return merged;
@@ -333,12 +411,12 @@ final class BibliographyClient {
         if (object == null) {
             return 0;
         }
+        return firstInt(key -> object.optString(key, EMPTY), keys);
+    }
+
+    private static int firstInt(FieldReader reader, String... keys) {
         for (String key : keys) {
-            int numericValue = object.optInt(key, 0);
-            if (numericValue > 0) {
-                return numericValue;
-            }
-            String stringValue = object.optString(key, EMPTY).replaceAll("[^0-9]", "").trim();
+            String stringValue = reader.read(key).replaceAll("[^0-9]", "").trim();
             if (stringValue.isEmpty()) {
                 continue;
             }

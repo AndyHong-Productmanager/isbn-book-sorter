@@ -22,6 +22,20 @@ final class CsvExporter {
             "Thumbnail URL",
             "Language",
             "Price",
+            "Book Size",
+            "Form",
+            "Form Detail",
+            "Series Title",
+            "Series No",
+            "Related ISBN",
+            "Title URL",
+            "EA ISBN",
+            "EA Add Code",
+            "Input Date",
+            "Update Date",
+            "BIB YN",
+            "Deposit YN",
+            "Ebook YN",
             "Saved At"
     };
 
@@ -49,6 +63,20 @@ final class CsvExporter {
                     book.thumbnailUrl,
                     book.language,
                     book.price,
+                    book.bookSize,
+                    book.form,
+                    book.formDetail,
+                    book.seriesTitle,
+                    book.seriesNo,
+                    book.relatedIsbn,
+                    book.titleUrl,
+                    book.eaIsbn,
+                    book.eaAddCode,
+                    book.inputDate,
+                    book.updateDate,
+                    book.bibYn,
+                    book.depositYn,
+                    book.ebookYn,
                     String.valueOf(book.savedAt)
             });
         }

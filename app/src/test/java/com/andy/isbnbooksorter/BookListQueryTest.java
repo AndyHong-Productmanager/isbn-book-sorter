@@ -72,11 +72,25 @@ public final class BookListQueryTest {
                 "",
                 "ko",
                 "15000",
+                "152*225",
+                "종이책",
+                "단행본",
+                "총서",
+                "3",
+                "관련",
+                "https://example.com/title",
+                "979",
+                "03230",
+                "20260101",
+                "20260102",
+                "Y",
+                "N",
+                "N",
                 1L);
 
         assertEquals(1, BookListQuery.apply(
                 Collections.singletonList(book),
-                new BookListQuery.Options("번역자 목차 소개", "", BookListQuery.Sort.SAVED_NEWEST)).size());
+                new BookListQuery.Options("번역자 목차 소개 03230", "", BookListQuery.Sort.SAVED_NEWEST)).size());
     }
 
     private static Book book(

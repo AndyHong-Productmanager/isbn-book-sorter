@@ -18,6 +18,20 @@ final class Book {
     final String thumbnailUrl;
     final String language;
     final String price;
+    final String bookSize;
+    final String form;
+    final String formDetail;
+    final String seriesTitle;
+    final String seriesNo;
+    final String relatedIsbn;
+    final String titleUrl;
+    final String eaIsbn;
+    final String eaAddCode;
+    final String inputDate;
+    final String updateDate;
+    final String bibYn;
+    final String depositYn;
+    final String ebookYn;
     final long savedAt;
 
     Book(
@@ -61,6 +75,20 @@ final class Book {
                 thumbnailUrl,
                 "",
                 "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 savedAt);
     }
 
@@ -82,6 +110,20 @@ final class Book {
             String thumbnailUrl,
             String language,
             String price,
+            String bookSize,
+            String form,
+            String formDetail,
+            String seriesTitle,
+            String seriesNo,
+            String relatedIsbn,
+            String titleUrl,
+            String eaIsbn,
+            String eaAddCode,
+            String inputDate,
+            String updateDate,
+            String bibYn,
+            String depositYn,
+            String ebookYn,
             long savedAt) {
         this.isbn = clean(isbn);
         this.title = defaultValue(title, "제목 없음");
@@ -100,6 +142,20 @@ final class Book {
         this.thumbnailUrl = clean(thumbnailUrl);
         this.language = clean(language);
         this.price = clean(price);
+        this.bookSize = clean(bookSize);
+        this.form = clean(form);
+        this.formDetail = clean(formDetail);
+        this.seriesTitle = clean(seriesTitle);
+        this.seriesNo = clean(seriesNo);
+        this.relatedIsbn = clean(relatedIsbn);
+        this.titleUrl = clean(titleUrl);
+        this.eaIsbn = clean(eaIsbn);
+        this.eaAddCode = clean(eaAddCode);
+        this.inputDate = clean(inputDate);
+        this.updateDate = clean(updateDate);
+        this.bibYn = clean(bibYn);
+        this.depositYn = clean(depositYn);
+        this.ebookYn = clean(ebookYn);
         this.savedAt = Math.max(0L, savedAt);
     }
 
@@ -122,6 +178,20 @@ final class Book {
                 thumbnailUrl,
                 language,
                 price,
+                bookSize,
+                form,
+                formDetail,
+                seriesTitle,
+                seriesNo,
+                relatedIsbn,
+                titleUrl,
+                eaIsbn,
+                eaAddCode,
+                inputDate,
+                updateDate,
+                bibYn,
+                depositYn,
+                ebookYn,
                 savedAt);
     }
 
@@ -144,6 +214,20 @@ final class Book {
                 thumbnailUrl,
                 language,
                 price,
+                bookSize,
+                form,
+                formDetail,
+                seriesTitle,
+                seriesNo,
+                relatedIsbn,
+                titleUrl,
+                eaIsbn,
+                eaAddCode,
+                inputDate,
+                updateDate,
+                bibYn,
+                depositYn,
+                ebookYn,
                 savedAt);
     }
 

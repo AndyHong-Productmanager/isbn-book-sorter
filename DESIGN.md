@@ -103,7 +103,7 @@ All spacing derives from a base of 4dp.
 - **Variants**: complete metadata, missing fields shown as "정보 없음".
 - **Spacing**: --space-2 and --space-3.
 - **States**: opened from a saved book row.
-- **Accessibility**: title, subtitle, author, translator, publisher, publication date, category, ISBN, source, language, price, page count, cover URL, saved date, description, introduction, contents, and table of contents are visible text; ISBN keeps monospace styling.
+- **Accessibility**: title, subtitle, author, translator, publisher, publication date, category, ISBN, source, language, price, form, size, series, related ISBN, National Library title URL/EA ISBN/add code/input date/update date/status flags, page count, cover URL, saved date, description, introduction, contents, and table of contents are visible text; ISBN keeps monospace styling.
 - **Motion**: page transition by immediate content replacement.
 
 ## 6. Motion & Interaction
