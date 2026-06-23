@@ -47,21 +47,23 @@ final class BibliographyClient {
     void lookup(String isbn, Callback callback) {
         executor.execute(() -> {
             Book nationalLibraryBook = tryLookup(() -> findNationalLibraryBook(isbn));
-            if (nationalLibraryBook != null) {
-                callback.onFound(new BookLookupResult(nationalLibraryBook, false));
-                return;
-            }
             Book aladinBook = tryLookup(() -> findAladinBook(isbn));
-            if (aladinBook != null) {
-                callback.onFound(new BookLookupResult(aladinBook, false));
-                return;
-            }
             Book googleBook = tryLookup(() -> findGoogleBook(isbn));
-            if (googleBook != null) {
-                callback.onFound(new BookLookupResult(googleBook, true));
+            Book openLibraryBook = tryLookup(() -> findOpenLibraryBook(isbn));
+            if (nationalLibraryBook != null) {
+                callback.onFound(new BookLookupResult(
+                        mergeBooks(nationalLibraryBook, aladinBook, googleBook, openLibraryBook),
+                        false));
                 return;
             }
-            Book openLibraryBook = tryLookup(() -> findOpenLibraryBook(isbn));
+            if (aladinBook != null) {
+                callback.onFound(new BookLookupResult(mergeBooks(aladinBook, googleBook, openLibraryBook), false));
+                return;
+            }
+            if (googleBook != null) {
+                callback.onFound(new BookLookupResult(mergeBooks(googleBook, openLibraryBook), true));
+                return;
+            }
             if (openLibraryBook != null) {
                 callback.onFound(new BookLookupResult(openLibraryBook, true));
                 return;
@@ -102,14 +104,21 @@ final class BibliographyClient {
         return new Book(
                 isbn,
                 firstNonEmpty(doc, "제목 없음", "TITLE", "title", "bookname"),
+                firstNonEmpty(doc, "", "SUB_TITLE", "subtitle", "subTitle"),
                 firstNonEmpty(doc, "", "AUTHOR", "author"),
+                firstNonEmpty(doc, "", "TRANSLATOR", "translator", "TRSLTOR", "translatedBy"),
                 firstNonEmpty(doc, "", "PUBLISHER", "publisher"),
                 firstNonEmpty(doc, "", "PUBLISH_PREDATE", "publishPredate", "publishDate"),
                 firstNonEmpty(doc, "미분류", "SUBJECT", "subject", "KDC", "class_no"),
                 "국립중앙도서관",
-                "",
-                0,
-                "",
+                firstNonEmpty(doc, "", "DESCRIPTION", "description", "ABSTRACT", "abstract"),
+                firstNonEmpty(doc, "", "TOC", "toc", "TABLE_OF_CONTENTS", "tableOfContents"),
+                firstNonEmpty(doc, "", "CONTENTS", "contents", "CONTENT", "content", "SUMMARY", "summary"),
+                firstNonEmpty(doc, "", "INTRODUCTION", "introduction", "BOOK_INTRODUCTION", "bookIntroduction"),
+                firstInt(doc, "PAGE", "PAGE_CNT", "page", "pageCount"),
+                firstNonEmpty(doc, "", "IMAGE", "image", "COVER_URL", "coverUrl", "thumbnailUrl"),
+                firstNonEmpty(doc, "", "LANG", "language"),
+                firstNonEmpty(doc, "", "PRICE", "price"),
                 0L);
     }
 
@@ -121,24 +130,32 @@ final class BibliographyClient {
                 + encode(aladinKey)
                 + "&itemIdType=ISBN13&ItemId="
                 + encode(isbn)
-                + "&output=js&Version=20131101";
+                + "&output=js&Version=20131101&OptResult=authors,fulldescription,Toc";
         JSONObject root = readJson(url);
         JSONArray items = root.optJSONArray("item");
         if (items == null || items.length() == 0) {
             return null;
         }
         JSONObject item = items.getJSONObject(0);
+        JSONObject subInfo = item.optJSONObject("subInfo");
         return new Book(
                 isbn,
                 item.optString("title", "제목 없음"),
+                firstNonEmpty(item, "", "subTitle", "subtitle"),
                 item.optString("author", ""),
+                translatorsFromAladin(item, subInfo),
                 item.optString("publisher", ""),
                 item.optString("pubDate", ""),
                 item.optString("categoryName", "미분류"),
                 "알라딘",
-                item.optString("description", ""),
-                0,
+                firstNonEmpty(item, "", "description", "fullDescription"),
+                firstNonEmpty(subInfo, "", "toc", "Toc", "tableOfContents"),
+                firstNonEmpty(item, "", "fullDescription", "description"),
+                firstNonEmpty(subInfo, "", "description", "fulldescription", "fullDescription"),
+                firstInt(subInfo, "itemPage", "pageCount"),
                 item.optString("cover", ""),
+                "",
+                firstNonEmpty(item, "", "priceStandard", "priceSales"),
                 0L);
     }
 
@@ -156,14 +173,21 @@ final class BibliographyClient {
         return new Book(
                 isbn,
                 volume.optString("title", "제목 없음"),
+                volume.optString("subtitle", ""),
                 joinArray(volume.optJSONArray("authors")),
+                "",
                 volume.optString("publisher", ""),
                 volume.optString("publishedDate", ""),
                 firstCategory(volume.optJSONArray("categories")),
                 "Google Books",
                 volume.optString("description", ""),
+                "",
+                volume.optString("description", ""),
+                volume.optString("description", ""),
                 volume.optInt("pageCount", 0),
                 thumbnailFromGoogle(volume),
+                volume.optString("language", ""),
+                "",
                 0L);
     }
 
@@ -180,14 +204,21 @@ final class BibliographyClient {
         return new Book(
                 isbn,
                 item.optString("title", "제목 없음"),
+                item.optString("subtitle", ""),
                 joinNames(item.optJSONArray("authors")),
+                "",
                 joinNames(item.optJSONArray("publishers")),
                 item.optString("publish_date", ""),
                 firstName(item.optJSONArray("subjects")),
                 "Open Library",
                 descriptionFromOpenLibrary(item),
+                tableOfContentsFromOpenLibrary(item),
+                contentsFromOpenLibrary(item),
+                firstExcerptFromOpenLibrary(item),
                 numberOfPagesFromOpenLibrary(item),
                 thumbnailFromOpenLibrary(item),
+                "",
+                "",
                 0L);
     }
 
@@ -197,6 +228,57 @@ final class BibliographyClient {
         } catch (Exception exception) {
             return null;
         }
+    }
+
+    private static Book mergeBooks(Book primary, Book... extras) {
+        Book merged = primary;
+        for (Book extra : extras) {
+            if (extra == null) {
+                continue;
+            }
+            merged = new Book(
+                    merged.isbn,
+                    firstFilled(merged.title, extra.title),
+                    firstFilled(merged.subtitle, extra.subtitle),
+                    firstFilled(merged.authors, extra.authors),
+                    firstFilled(merged.translators, extra.translators),
+                    firstFilled(merged.publisher, extra.publisher),
+                    firstFilled(merged.publishedDate, extra.publishedDate),
+                    firstFilled(merged.category, extra.category),
+                    mergeSources(merged.source, extra.source),
+                    firstFilled(merged.description, extra.description),
+                    firstFilled(merged.tableOfContents, extra.tableOfContents),
+                    firstFilled(merged.contents, extra.contents),
+                    firstFilled(merged.introduction, extra.introduction),
+                    merged.pageCount > 0 ? merged.pageCount : extra.pageCount,
+                    firstFilled(merged.thumbnailUrl, extra.thumbnailUrl),
+                    firstFilled(merged.language, extra.language),
+                    firstFilled(merged.price, extra.price),
+                    merged.savedAt);
+        }
+        return merged;
+    }
+
+    private static String firstFilled(String primary, String fallback) {
+        if (primary != null
+                && !primary.trim().isEmpty()
+                && !"미분류".equals(primary.trim())
+                && !"제목 없음".equals(primary.trim())) {
+            return primary;
+        }
+        return fallback == null ? "" : fallback.trim();
+    }
+
+    private static String mergeSources(String primary, String extra) {
+        String left = primary == null ? "" : primary.trim();
+        String right = extra == null ? "" : extra.trim();
+        if (left.isEmpty()) {
+            return right;
+        }
+        if (right.isEmpty() || left.contains(right)) {
+            return left;
+        }
+        return left + " + " + right;
     }
 
     private static JSONObject readJson(String urlValue) throws Exception {
@@ -231,6 +313,9 @@ final class BibliographyClient {
     }
 
     private static String firstNonEmpty(JSONObject object, String fallback, String... keys) {
+        if (object == null) {
+            return fallback;
+        }
         return firstNonEmpty(key -> object.optString(key, EMPTY), fallback, keys);
     }
 
@@ -242,6 +327,28 @@ final class BibliographyClient {
             }
         }
         return fallback;
+    }
+
+    private static int firstInt(JSONObject object, String... keys) {
+        if (object == null) {
+            return 0;
+        }
+        for (String key : keys) {
+            int numericValue = object.optInt(key, 0);
+            if (numericValue > 0) {
+                return numericValue;
+            }
+            String stringValue = object.optString(key, EMPTY).replaceAll("[^0-9]", "").trim();
+            if (stringValue.isEmpty()) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(stringValue);
+            } catch (NumberFormatException exception) {
+                continue;
+            }
+        }
+        return 0;
     }
 
     private static String joinArray(JSONArray array) {
@@ -302,6 +409,69 @@ final class BibliographyClient {
         return name;
     }
 
+    private static String translatorsFromAladin(JSONObject item, JSONObject subInfo) {
+        String fromSubInfo = authorNamesByRole(
+                subInfo == null ? null : subInfo.optJSONArray("authors"),
+                "옮긴이",
+                "역자",
+                "번역");
+        if (!fromSubInfo.isEmpty()) {
+            return fromSubInfo;
+        }
+        return namesWithRole(item.optString("author", ""), "옮긴이", "역자", "번역");
+    }
+
+    private static String authorNamesByRole(JSONArray authors, String... roles) {
+        if (authors == null) {
+            return "";
+        }
+        List<String> values = new ArrayList<>();
+        for (int index = 0; index < authors.length(); index += 1) {
+            JSONObject author = authors.optJSONObject(index);
+            if (author == null) {
+                continue;
+            }
+            String role = author.optString("authorType", author.optString("type", "")).trim();
+            if (!containsAny(role, roles)) {
+                continue;
+            }
+            String name = firstNonEmpty(author, "", "authorName", "name").trim();
+            if (!name.isEmpty()) {
+                values.add(name);
+            }
+        }
+        return String.join(", ", values);
+    }
+
+    private static String namesWithRole(String value, String... roles) {
+        if (value == null || value.trim().isEmpty()) {
+            return "";
+        }
+        List<String> values = new ArrayList<>();
+        String[] parts = value.split(",");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (!containsAny(trimmed, roles)) {
+                continue;
+            }
+            int roleStart = trimmed.indexOf('(');
+            String name = roleStart > 0 ? trimmed.substring(0, roleStart).trim() : trimmed;
+            if (!name.isEmpty()) {
+                values.add(name);
+            }
+        }
+        return String.join(", ", values);
+    }
+
+    private static boolean containsAny(String value, String... needles) {
+        for (String needle : needles) {
+            if (value.contains(needle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String thumbnailFromGoogle(JSONObject volume) {
         JSONObject links = volume.optJSONObject("imageLinks");
         if (links == null) {
@@ -335,6 +505,44 @@ final class BibliographyClient {
         } catch (NumberFormatException exception) {
             return 0;
         }
+    }
+
+    private static String tableOfContentsFromOpenLibrary(JSONObject item) {
+        return joinObjectValues(item.optJSONArray("table_of_contents"), "title", "name", "label");
+    }
+
+    private static String contentsFromOpenLibrary(JSONObject item) {
+        return joinNames(item.optJSONArray("subjects"));
+    }
+
+    private static String firstExcerptFromOpenLibrary(JSONObject item) {
+        JSONArray excerpts = item.optJSONArray("excerpts");
+        if (excerpts == null || excerpts.length() == 0) {
+            return "";
+        }
+        JSONObject excerpt = excerpts.optJSONObject(0);
+        if (excerpt == null) {
+            return "";
+        }
+        return excerpt.optString("text", "").trim();
+    }
+
+    private static String joinObjectValues(JSONArray objects, String... keys) {
+        if (objects == null) {
+            return "";
+        }
+        List<String> values = new ArrayList<>();
+        for (int index = 0; index < objects.length(); index += 1) {
+            JSONObject object = objects.optJSONObject(index);
+            if (object == null) {
+                continue;
+            }
+            String value = firstNonEmpty(object, "", keys);
+            if (!value.isEmpty()) {
+                values.add(value);
+            }
+        }
+        return String.join(", ", values);
     }
 
     private static String thumbnailFromOpenLibrary(JSONObject item) {

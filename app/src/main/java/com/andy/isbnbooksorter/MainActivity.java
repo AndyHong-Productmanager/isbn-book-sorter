@@ -384,16 +384,23 @@ public final class MainActivity extends ComponentActivity {
         detailScroll.addView(content);
 
         addDetail(content, "제목", book.title);
+        addDetail(content, "부제", book.subtitle);
         addDetail(content, "저자", book.authors);
+        addDetail(content, "번역", book.translators);
         addDetail(content, "출판사", book.publisher);
         addDetail(content, "출판일", book.publishedDate);
         addDetail(content, "카테고리", book.category);
         addDetail(content, "ISBN", book.isbn);
         addDetail(content, "출처", book.source);
+        addDetail(content, "언어", book.language);
+        addDetail(content, "가격", book.price);
         addDetail(content, "페이지", book.pageCount > 0 ? String.valueOf(book.pageCount) : "");
         addDetail(content, "표지 URL", book.thumbnailUrl);
         addDetail(content, "저장일", formatDetailSavedAt(book.savedAt));
         addDetail(content, "설명", book.description);
+        addDetail(content, "소개", book.introduction);
+        addDetail(content, "내용", book.contents);
+        addDetail(content, "목차", book.tableOfContents);
 
         new AlertDialog.Builder(this)
                 .setTitle(CatalogUiContract.BOOK_DETAIL_TITLE)

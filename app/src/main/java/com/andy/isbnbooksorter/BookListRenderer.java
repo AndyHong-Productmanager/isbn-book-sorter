@@ -73,7 +73,13 @@ final class BookListRenderer {
         row.setFocusable(true);
         row.setOnClickListener(view -> listener.onBookSelected(book));
         row.addView(ui.text(book.title, 16, UiKit.TEXT_PRIMARY, Typeface.BOLD));
+        if (!book.subtitle.isEmpty()) {
+            row.addView(ui.text("부제: " + display(book.subtitle), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        }
         row.addView(ui.text("저자: " + display(book.authors), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        if (!book.translators.isEmpty()) {
+            row.addView(ui.text("번역: " + display(book.translators), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        }
         row.addView(ui.text(
                 "출판: " + display(book.publisher) + " · " + display(book.publishedDate),
                 13,
@@ -82,6 +88,12 @@ final class BookListRenderer {
         row.addView(ui.text("분류: " + display(book.category), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         if (!book.description.isEmpty()) {
             row.addView(ui.text("설명: " + compact(book.description), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        }
+        if (!book.introduction.isEmpty()) {
+            row.addView(ui.text("소개: " + compact(book.introduction), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        }
+        if (!book.tableOfContents.isEmpty()) {
+            row.addView(ui.text("목차: " + compact(book.tableOfContents), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         }
         if (book.pageCount > 0 || !book.thumbnailUrl.isEmpty()) {
             row.addView(ui.text(

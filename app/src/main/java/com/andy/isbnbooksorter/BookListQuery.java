@@ -59,11 +59,19 @@ final class BookListQuery {
         String searchable = lower(String.join(
                 " ",
                 book.title,
+                book.subtitle,
                 book.authors,
+                book.translators,
                 book.publisher,
                 book.isbn,
                 book.category,
-                book.source));
+                book.source,
+                book.description,
+                book.tableOfContents,
+                book.contents,
+                book.introduction,
+                book.language,
+                book.price));
         for (String token : tokens) {
             if (!token.isEmpty() && !searchable.contains(token)) {
                 return false;

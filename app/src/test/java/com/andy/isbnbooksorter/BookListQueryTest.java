@@ -3,6 +3,7 @@ package com.andy.isbnbooksorter;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
@@ -49,6 +50,33 @@ public final class BookListQueryTest {
         assertEquals("Alice", BookListQuery.apply(books, new BookListQuery.Options("", "", BookListQuery.Sort.AUTHOR)).get(0).authors);
         assertEquals("A", BookListQuery.apply(books, new BookListQuery.Options("", "", BookListQuery.Sort.CATEGORY)).get(0).category);
         assertEquals(30L, BookListQuery.apply(books, new BookListQuery.Options("", "", BookListQuery.Sort.SAVED_NEWEST)).get(0).savedAt);
+    }
+
+    @Test
+    public void searchesExtendedBibliographyFields() {
+        Book book = new Book(
+                "979",
+                "제목",
+                "부제",
+                "저자",
+                "번역자",
+                "출판사",
+                "2026",
+                "분류",
+                "테스트",
+                "설명",
+                "목차",
+                "내용",
+                "소개",
+                0,
+                "",
+                "ko",
+                "15000",
+                1L);
+
+        assertEquals(1, BookListQuery.apply(
+                Collections.singletonList(book),
+                new BookListQuery.Options("번역자 목차 소개", "", BookListQuery.Sort.SAVED_NEWEST)).size());
     }
 
     private static Book book(

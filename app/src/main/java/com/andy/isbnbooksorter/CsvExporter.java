@@ -7,14 +7,21 @@ final class CsvExporter {
     private static final String[] HEADER = {
             "ISBN",
             "Title",
+            "Subtitle",
             "Authors",
+            "Translators",
             "Publisher",
             "Published Date",
             "Category",
             "Source",
             "Description",
+            "Table Of Contents",
+            "Contents",
+            "Introduction",
             "Page Count",
             "Thumbnail URL",
+            "Language",
+            "Price",
             "Saved At"
     };
 
@@ -27,14 +34,21 @@ final class CsvExporter {
             appendRow(builder, new String[] {
                     book.isbn,
                     book.title,
+                    book.subtitle,
                     book.authors,
+                    book.translators,
                     book.publisher,
                     book.publishedDate,
                     book.category,
                     book.source,
                     book.description,
+                    book.tableOfContents,
+                    book.contents,
+                    book.introduction,
                     String.valueOf(book.pageCount),
                     book.thumbnailUrl,
+                    book.language,
+                    book.price,
                     String.valueOf(book.savedAt)
             });
         }
