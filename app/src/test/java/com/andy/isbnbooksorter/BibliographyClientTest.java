@@ -21,4 +21,14 @@ public final class BibliographyClientTest {
         assertEquals("", BibliographyClient.firstNonEmpty(reader, "", "PUBLISH_PREDATE", "publishDate"));
         assertEquals("8", BibliographyClient.firstNonEmpty(reader, "미분류", "SUBJECT", "KDC"));
     }
+
+    @Test
+    public void missingMessageDoesNotBlameApiKeyWhenDomesticKeyExists() {
+        assertEquals(
+                "검색 결과가 없습니다. ISBN을 다시 확인하거나 다른 조회 소스를 시도하세요.",
+                BibliographyClient.missingMessage(true));
+        assertEquals(
+                "국내 API 키가 비어 있어 Google Books와 Open Library만 조회했습니다.",
+                BibliographyClient.missingMessage(false));
+    }
 }

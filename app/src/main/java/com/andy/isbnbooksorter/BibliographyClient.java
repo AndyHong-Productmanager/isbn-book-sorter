@@ -66,7 +66,7 @@ final class BibliographyClient {
                 callback.onFound(new BookLookupResult(openLibraryBook, true));
                 return;
             }
-            callback.onMissing("검색 결과가 없습니다. ISBN 또는 API 키를 확인하세요.");
+            callback.onMissing(missingMessage(hasDomesticKey()));
         });
     }
 
@@ -76,6 +76,13 @@ final class BibliographyClient {
 
     boolean hasDomesticKey() {
         return !nationalLibraryKey.isEmpty() || !aladinKey.isEmpty();
+    }
+
+    static String missingMessage(boolean hasDomesticKey) {
+        if (hasDomesticKey) {
+            return "검색 결과가 없습니다. ISBN을 다시 확인하거나 다른 조회 소스를 시도하세요.";
+        }
+        return "국내 API 키가 비어 있어 Google Books와 Open Library만 조회했습니다.";
     }
 
     private Book findNationalLibraryBook(String isbn) throws Exception {
