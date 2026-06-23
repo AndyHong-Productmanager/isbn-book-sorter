@@ -1,14 +1,17 @@
 package com.andy.isbnbooksorter;
 
 import android.Manifest;
+import android.net.Uri;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,16 +21,37 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 public final class MainActivity extends ComponentActivity {
+    private static final String[] SORT_LABELS = {
+            "저장일 최신순",
+            "제목순",
+            "저자순",
+            "카테고리순"
+    };
+
     private BookRepository repository;
     private BibliographyClient client;
     private ScannerController scanner;
     private UiKit ui;
     private BookListRenderer bookListRenderer;
     private ActivityResultLauncher<String> cameraPermissionLauncher;
+    private ActivityResultLauncher<String> csvExportLauncher;
     private TextView statusText;
     private EditText isbnInput;
     private EditText categoryInput;
+    private EditText savedSearchInput;
+    private EditText savedCategoryFilterInput;
+    private Spinner sortSpinner;
+    private BookListQuery.Sort currentSort = BookListQuery.Sort.SAVED_NEWEST;
+    private final List<Book> currentVisibleBooks = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +66,13 @@ public final class MainActivity extends ComponentActivity {
                         status("카메라 권한 승인됨. 스캔 시작을 누르세요.", UiKit.TEXT_SECONDARY);
                     } else {
                         status("카메라 권한이 없어 수동 ISBN 입력만 사용할 수 있습니다.", UiKit.STATUS_WARNING);
+                    }
+                });
+        csvExportLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("text/csv"),
+                uri -> {
+                    if (uri != null) {
+                        exportVisibleBooks(uri);
                     }
                 });
         setContentView(createContent());
@@ -125,6 +156,7 @@ public final class MainActivity extends ComponentActivity {
         titleParams.setMargins(0, ui.dp(18), 0, ui.dp(6));
         listTitle.setLayoutParams(titleParams);
         root.addView(listTitle);
+        renderSavedBookControls(root);
         LinearLayout bookList = ui.column(8);
         root.addView(bookList);
         bookListRenderer = new BookListRenderer(ui, bookList);
@@ -159,6 +191,60 @@ public final class MainActivity extends ComponentActivity {
         panel.addView(isbnInput);
         panel.addView(categoryInput);
         panel.addView(lookupButton);
+        root.addView(panel);
+    }
+
+    private void renderSavedBookControls(LinearLayout root) {
+        LinearLayout panel = ui.column(8);
+        panel.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
+        panel.setBackgroundColor(UiKit.SURFACE_SECONDARY);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, 0, ui.dp(12));
+        panel.setLayoutParams(params);
+
+        savedSearchInput = ui.input("저장된 책 검색(제목/저자/출판사/ISBN/분류/출처)");
+        savedCategoryFilterInput = ui.input("카테고리 필터");
+        sortSpinner = new Spinner(this);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                SORT_LABELS);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sortSpinner.setAdapter(adapter);
+        sortSpinner.setMinimumHeight(ui.dp(48));
+
+        LinearLayout actions = ui.row(8);
+        Button applyButton = ui.button("적용");
+        applyButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        applyButton.setOnClickListener(view -> {
+            currentSort = sortFromPosition(sortSpinner.getSelectedItemPosition());
+            renderBooks();
+        });
+        Button clearButton = ui.button("초기화");
+        clearButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        clearButton.setOnClickListener(view -> {
+            savedSearchInput.setText("");
+            savedCategoryFilterInput.setText("");
+            sortSpinner.setSelection(0);
+            currentSort = BookListQuery.Sort.SAVED_NEWEST;
+            renderBooks();
+        });
+        actions.addView(applyButton);
+        actions.addView(clearButton);
+
+        Button exportButton = ui.button("현재 목록 CSV 내보내기");
+        exportButton.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        exportButton.setOnClickListener(view -> startCsvExport());
+
+        panel.addView(savedSearchInput);
+        panel.addView(savedCategoryFilterInput);
+        panel.addView(sortSpinner);
+        panel.addView(actions);
+        panel.addView(exportButton);
         root.addView(panel);
     }
 
@@ -208,14 +294,7 @@ public final class MainActivity extends ComponentActivity {
         String manualCategory = categoryInput.getText().toString().trim();
         Book book = result.book;
         if (!manualCategory.isEmpty()) {
-            book = new Book(
-                    book.isbn,
-                    book.title,
-                    book.authors,
-                    book.publisher,
-                    book.publishedDate,
-                    manualCategory,
-                    book.source);
+            book = book.withCategory(manualCategory);
         }
         repository.save(book);
         isbnInput.setText("");
@@ -229,7 +308,20 @@ public final class MainActivity extends ComponentActivity {
         if (bookListRenderer == null) {
             return;
         }
-        bookListRenderer.render(repository.listAll());
+        currentSort = sortFromPosition(sortSpinner == null ? 0 : sortSpinner.getSelectedItemPosition());
+        List<Book> allBooks = repository.listAll();
+        BookListQuery.Options options = new BookListQuery.Options(
+                textFrom(savedSearchInput),
+                textFrom(savedCategoryFilterInput),
+                currentSort);
+        List<Book> visibleBooks = BookListQuery.apply(allBooks, options);
+        currentVisibleBooks.clear();
+        currentVisibleBooks.addAll(visibleBooks);
+        boolean hasActiveFilter = !options.search.isEmpty() || !options.categoryFilter.isEmpty();
+        String emptyMessage = allBooks.isEmpty()
+                ? "아직 저장된 책이 없습니다. ISBN을 스캔하거나 직접 입력하세요."
+                : "조건에 맞는 저장된 책이 없습니다. 검색어나 카테고리 필터를 지워보세요.";
+        bookListRenderer.render(visibleBooks, emptyMessage, currentSort == BookListQuery.Sort.CATEGORY && !hasActiveFilter);
     }
 
     private void status(String message, int color) {
@@ -243,5 +335,52 @@ public final class MainActivity extends ComponentActivity {
 
     private boolean hasCameraPermission() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void startCsvExport() {
+        if (currentVisibleBooks.isEmpty()) {
+            status("내보낼 현재 목록이 없습니다.", UiKit.STATUS_WARNING);
+            return;
+        }
+        csvExportLauncher.launch("isbn-books-" + timestampForFileName() + ".csv");
+    }
+
+    private void exportVisibleBooks(Uri uri) {
+        String csv = CsvExporter.exportBooks(currentVisibleBooks);
+        try (OutputStream stream = getContentResolver().openOutputStream(uri)) {
+            if (stream == null) {
+                status("CSV 파일을 열 수 없습니다.", UiKit.STATUS_ERROR);
+                return;
+            }
+            stream.write(csv.getBytes(StandardCharsets.UTF_8));
+            status("현재 목록 " + currentVisibleBooks.size() + "권을 CSV로 내보냈습니다.", UiKit.ACCENT_PRIMARY);
+        } catch (Exception exception) {
+            status("CSV 내보내기에 실패했습니다.", UiKit.STATUS_ERROR);
+        }
+    }
+
+    private static String textFrom(EditText input) {
+        if (input == null) {
+            return "";
+        }
+        return input.getText().toString().trim();
+    }
+
+    private static BookListQuery.Sort sortFromPosition(int position) {
+        switch (position) {
+            case 1:
+                return BookListQuery.Sort.TITLE;
+            case 2:
+                return BookListQuery.Sort.AUTHOR;
+            case 3:
+                return BookListQuery.Sort.CATEGORY;
+            case 0:
+            default:
+                return BookListQuery.Sort.SAVED_NEWEST;
+        }
+    }
+
+    private static String timestampForFileName() {
+        return new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date());
     }
 }

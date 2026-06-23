@@ -7,6 +7,10 @@
 - ISBN 바코드 스캔
 - ISBN 직접 입력
 - 카테고리별 도서 저장
+- 저장된 책 검색
+- 카테고리 필터
+- 저장일 최신순/이름순/저자순/카테고리순 정렬
+- 현재 목록 CSV 내보내기
 - 로컬 SQLite 저장
 - 국내 서지 API 키를 나중에 넣을 수 있는 빈칸 제공
 - 국내 API 키가 비어 있으면 Google Books와 Open Library로 대체 조회
@@ -38,7 +42,7 @@ app/src/main/res/values/api_keys.xml
 빌드 결과:
 
 ```text
-app/build/outputs/apk/debug/isbn-book-sorter-0.1.3-debug.apk
+app/build/outputs/apk/debug/isbn-book-sorter-0.2.0-debug.apk
 ```
 
 ## 깃허브 릴리즈

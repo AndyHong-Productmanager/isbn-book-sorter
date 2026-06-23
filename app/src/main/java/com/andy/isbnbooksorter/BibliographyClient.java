@@ -95,7 +95,11 @@ final class BibliographyClient {
                 firstNonEmpty(doc, "PUBLISHER", "publisher"),
                 firstNonEmpty(doc, "PUBLISH_PREDATE", "publishPredate", "publishDate"),
                 firstNonEmpty(doc, "SUBJECT", "subject", "KDC", "class_no"),
-                "국립중앙도서관");
+                "국립중앙도서관",
+                "",
+                0,
+                "",
+                0L);
     }
 
     private Book findAladinBook(String isbn) throws Exception {
@@ -120,7 +124,11 @@ final class BibliographyClient {
                 item.optString("publisher", ""),
                 item.optString("pubDate", ""),
                 item.optString("categoryName", "미분류"),
-                "알라딘");
+                "알라딘",
+                item.optString("description", ""),
+                0,
+                item.optString("cover", ""),
+                0L);
     }
 
     private Book findGoogleBook(String isbn) throws Exception {
@@ -141,7 +149,11 @@ final class BibliographyClient {
                 volume.optString("publisher", ""),
                 volume.optString("publishedDate", ""),
                 firstCategory(volume.optJSONArray("categories")),
-                "Google Books");
+                "Google Books",
+                volume.optString("description", ""),
+                volume.optInt("pageCount", 0),
+                thumbnailFromGoogle(volume),
+                0L);
     }
 
     private Book findOpenLibraryBook(String isbn) throws Exception {
@@ -161,7 +173,11 @@ final class BibliographyClient {
                 joinNames(item.optJSONArray("publishers")),
                 item.optString("publish_date", ""),
                 firstName(item.optJSONArray("subjects")),
-                "Open Library");
+                "Open Library",
+                descriptionFromOpenLibrary(item),
+                numberOfPagesFromOpenLibrary(item),
+                thumbnailFromOpenLibrary(item),
+                0L);
     }
 
     private static Book tryLookup(LookupSource source) {
@@ -269,5 +285,56 @@ final class BibliographyClient {
             return "미분류";
         }
         return name;
+    }
+
+    private static String thumbnailFromGoogle(JSONObject volume) {
+        JSONObject links = volume.optJSONObject("imageLinks");
+        if (links == null) {
+            return "";
+        }
+        String thumbnail = links.optString("thumbnail", "").trim();
+        if (!thumbnail.isEmpty()) {
+            return thumbnail;
+        }
+        return links.optString("smallThumbnail", "").trim();
+    }
+
+    private static String descriptionFromOpenLibrary(JSONObject item) {
+        Object description = item.opt("description");
+        if (description instanceof JSONObject) {
+            return ((JSONObject) description).optString("value", "");
+        }
+        if (description instanceof String) {
+            return ((String) description).trim();
+        }
+        return "";
+    }
+
+    private static int numberOfPagesFromOpenLibrary(JSONObject item) {
+        String numberOfPages = item.optString("number_of_pages", "").trim();
+        if (numberOfPages.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(numberOfPages);
+        } catch (NumberFormatException exception) {
+            return 0;
+        }
+    }
+
+    private static String thumbnailFromOpenLibrary(JSONObject item) {
+        JSONObject cover = item.optJSONObject("cover");
+        if (cover == null) {
+            return "";
+        }
+        String large = cover.optString("large", "").trim();
+        if (!large.isEmpty()) {
+            return large;
+        }
+        String medium = cover.optString("medium", "").trim();
+        if (!medium.isEmpty()) {
+            return medium;
+        }
+        return cover.optString("small", "").trim();
     }
 }
