@@ -1,7 +1,10 @@
 package com.andy.isbnbooksorter;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraManager;
 import android.media.Image;
 
 import androidx.annotation.OptIn;
@@ -46,7 +49,7 @@ final class ScannerController {
     }
 
     boolean start() {
-        if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+        if (!hasAvailableCamera()) {
             listener.onScannerError("사용 가능한 카메라를 찾을 수 없습니다. 수동 ISBN 입력을 사용하세요.");
             return false;
         }
@@ -54,6 +57,21 @@ final class ScannerController {
         ListenableFuture<ProcessCameraProvider> providerFuture = ProcessCameraProvider.getInstance(activity);
         providerFuture.addListener(() -> bindProvider(providerFuture), ContextCompat.getMainExecutor(activity));
         return true;
+    }
+
+    private boolean hasAvailableCamera() {
+        if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            return false;
+        }
+        CameraManager cameraManager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
+        if (cameraManager == null) {
+            return false;
+        }
+        try {
+            return cameraManager.getCameraIdList().length > 0;
+        } catch (CameraAccessException exception) {
+            return false;
+        }
     }
 
     void pause() {
