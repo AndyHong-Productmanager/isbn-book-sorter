@@ -1,6 +1,7 @@
 package com.andy.isbnbooksorter;
 
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.media.Image;
 
 import androidx.annotation.OptIn;
@@ -44,10 +45,15 @@ final class ScannerController {
         this.listener = listener;
     }
 
-    void start() {
+    boolean start() {
+        if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            listener.onScannerError("사용 가능한 카메라를 찾을 수 없습니다. 수동 ISBN 입력을 사용하세요.");
+            return false;
+        }
         paused = false;
         ListenableFuture<ProcessCameraProvider> providerFuture = ProcessCameraProvider.getInstance(activity);
         providerFuture.addListener(() -> bindProvider(providerFuture), ContextCompat.getMainExecutor(activity));
+        return true;
     }
 
     void pause() {

@@ -251,8 +251,9 @@ public final class MainActivity extends ComponentActivity {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA);
             return;
         }
-        scanner.start();
-        status("스캔 중입니다. ISBN 바코드를 프레임 안에 맞춰주세요.", UiKit.ACCENT_PRIMARY);
+        if (scanner.start()) {
+            status("스캔 중입니다. ISBN 바코드를 프레임 안에 맞춰주세요.", UiKit.ACCENT_PRIMARY);
+        }
     }
 
     private void lookup(String isbn, String categoryOverride) {
