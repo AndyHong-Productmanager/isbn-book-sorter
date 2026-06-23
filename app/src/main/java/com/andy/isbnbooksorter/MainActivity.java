@@ -30,13 +30,6 @@ import java.util.List;
 import java.util.Locale;
 
 public final class MainActivity extends ComponentActivity {
-    private static final String[] SORT_LABELS = {
-            "저장일 최신순",
-            "제목순",
-            "저자순",
-            "카테고리순"
-    };
-
     private BookRepository repository;
     private BibliographyClient client;
     private ScannerController scanner;
@@ -102,9 +95,9 @@ public final class MainActivity extends ComponentActivity {
         root.setPadding(ui.dp(16), ui.dp(18), ui.dp(16), ui.dp(24));
         scroll.addView(root);
 
-        TextView title = ui.text("ISBN 도서 정리", 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
+        TextView title = ui.text(CatalogUiContract.APP_TITLE, 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         root.addView(title);
-        root.addView(ui.text("ISBN을 스캔하거나 직접 입력하면 카테고리별로 저장됩니다.", 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
 
         PreviewView preview = new PreviewView(this);
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
@@ -149,7 +142,7 @@ public final class MainActivity extends ComponentActivity {
         renderKeyStatus(root);
         renderManualInput(root);
 
-        TextView listTitle = ui.text("저장된 책", 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
+        TextView listTitle = ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -181,9 +174,9 @@ public final class MainActivity extends ComponentActivity {
         params.setMargins(0, ui.dp(14), 0, 0);
         panel.setLayoutParams(params);
 
-        isbnInput = ui.input("ISBN 직접 입력");
-        categoryInput = ui.input("카테고리 직접 지정(선택)");
-        Button lookupButton = ui.button("조회 후 저장");
+        isbnInput = ui.input(CatalogUiContract.ISBN_INPUT_HINT);
+        categoryInput = ui.input(CatalogUiContract.CATEGORY_INPUT_HINT);
+        Button lookupButton = ui.button(CatalogUiContract.LOOKUP_AND_SAVE);
         lookupButton.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -204,25 +197,25 @@ public final class MainActivity extends ComponentActivity {
         params.setMargins(0, 0, 0, ui.dp(12));
         panel.setLayoutParams(params);
 
-        savedSearchInput = ui.input("저장된 책 검색(제목/저자/출판사/ISBN/분류/출처)");
-        savedCategoryFilterInput = ui.input("카테고리 필터");
+        savedSearchInput = ui.input(CatalogUiContract.SAVED_SEARCH_HINT);
+        savedCategoryFilterInput = ui.input(CatalogUiContract.SAVED_CATEGORY_FILTER_HINT);
         sortSpinner = new Spinner(this);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_spinner_item,
-                SORT_LABELS);
+                CatalogUiContract.SORT_LABELS);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sortSpinner.setAdapter(adapter);
         sortSpinner.setMinimumHeight(ui.dp(48));
 
         LinearLayout actions = ui.row(8);
-        Button applyButton = ui.button("적용");
+        Button applyButton = ui.button(CatalogUiContract.APPLY_FILTERS);
         applyButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         applyButton.setOnClickListener(view -> {
             currentSort = sortFromPosition(sortSpinner.getSelectedItemPosition());
             renderBooks();
         });
-        Button clearButton = ui.button("초기화");
+        Button clearButton = ui.button(CatalogUiContract.CLEAR_FILTERS);
         clearButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         clearButton.setOnClickListener(view -> {
             savedSearchInput.setText("");
@@ -234,7 +227,7 @@ public final class MainActivity extends ComponentActivity {
         actions.addView(applyButton);
         actions.addView(clearButton);
 
-        Button exportButton = ui.button("현재 목록 CSV 내보내기");
+        Button exportButton = ui.button(CatalogUiContract.EXPORT_VISIBLE_CSV);
         exportButton.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -319,8 +312,8 @@ public final class MainActivity extends ComponentActivity {
         currentVisibleBooks.addAll(visibleBooks);
         boolean hasActiveFilter = !options.search.isEmpty() || !options.categoryFilter.isEmpty();
         String emptyMessage = allBooks.isEmpty()
-                ? "아직 저장된 책이 없습니다. ISBN을 스캔하거나 직접 입력하세요."
-                : "조건에 맞는 저장된 책이 없습니다. 검색어나 카테고리 필터를 지워보세요.";
+                ? CatalogUiContract.EMPTY_LIBRARY_MESSAGE
+                : CatalogUiContract.EMPTY_FILTERED_MESSAGE;
         bookListRenderer.render(visibleBooks, emptyMessage, currentSort == BookListQuery.Sort.CATEGORY && !hasActiveFilter);
     }
 
