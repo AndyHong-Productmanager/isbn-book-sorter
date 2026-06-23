@@ -3,6 +3,11 @@ package com.andy.isbnbooksorter;
 final class CatalogUiContract {
     static final String APP_TITLE = "ISBN 도서 정리";
     static final String APP_SUBTITLE = "ISBN을 스캔하거나 직접 입력하면 카테고리별로 저장됩니다.";
+    static final String MENU_TOGGLE = "☰ 메뉴";
+    static final String MENU_ISBN_SEARCH = "ISBN 검색하기";
+    static final String MENU_LIBRARY = "LIBRARY";
+    static final String ISBN_SEARCH_TITLE = "ISBN 검색하기";
+    static final String LIBRARY_TITLE = "LIBRARY";
     static final String ISBN_INPUT_HINT = "ISBN 직접 입력";
     static final String CATEGORY_INPUT_HINT = "카테고리 직접 지정(선택)";
     static final String LOOKUP_AND_SAVE = "조회 후 저장";

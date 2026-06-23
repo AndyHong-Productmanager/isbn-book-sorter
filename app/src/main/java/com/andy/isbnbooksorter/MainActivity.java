@@ -42,6 +42,10 @@ public final class MainActivity extends ComponentActivity {
     private BookListRenderer bookListRenderer;
     private ActivityResultLauncher<String> cameraPermissionLauncher;
     private ActivityResultLauncher<String> csvExportLauncher;
+    private ScrollView pageScroll;
+    private LinearLayout menuPanel;
+    private View isbnSearchSection;
+    private View librarySection;
     private TextView statusText;
     private EditText isbnInput;
     private EditText categoryInput;
@@ -93,16 +97,29 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private View createContent() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
+        pageScroll = new ScrollView(this);
+        pageScroll.setFillViewport(true);
+        pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
         LinearLayout root = ui.column(20);
         root.setPadding(ui.dp(16), ui.dp(18), ui.dp(16), ui.dp(24));
-        scroll.addView(root);
+        pageScroll.addView(root);
 
+        LinearLayout header = ui.row(12);
         TextView title = ui.text(CatalogUiContract.APP_TITLE, 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
-        root.addView(title);
+        title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        Button menuButton = ui.button(CatalogUiContract.MENU_TOGGLE);
+        menuButton.setMinWidth(ui.dp(104));
+        menuButton.setOnClickListener(view -> toggleMenu());
+        header.addView(title);
+        header.addView(menuButton);
+        root.addView(header);
         root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        renderMenu(root);
+
+        isbnSearchSection = ui.column(12);
+        root.addView(isbnSearchSection);
+        ((LinearLayout) isbnSearchSection).addView(
+                ui.text(CatalogUiContract.ISBN_SEARCH_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD));
 
         PreviewView preview = new PreviewView(this);
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
@@ -111,7 +128,7 @@ public final class MainActivity extends ComponentActivity {
         previewParams.setMargins(0, ui.dp(16), 0, ui.dp(12));
         preview.setLayoutParams(previewParams);
         preview.setBackgroundColor(UiKit.SCANNER_SURFACE);
-        root.addView(preview);
+        ((LinearLayout) isbnSearchSection).addView(preview);
 
         scanner = new ScannerController(this, preview, new ScannerController.Listener() {
             @Override
@@ -137,28 +154,74 @@ public final class MainActivity extends ComponentActivity {
         });
         scanActions.addView(scanButton);
         scanActions.addView(pauseButton);
-        root.addView(scanActions);
+        ((LinearLayout) isbnSearchSection).addView(scanActions);
 
         statusText = ui.text("", 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL);
         statusText.setMinHeight(ui.dp(40));
         statusText.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8));
         statusText.setBackgroundColor(UiKit.SURFACE_SECONDARY);
-        root.addView(statusText);
-        renderKeyStatus(root);
-        renderManualInput(root);
+        ((LinearLayout) isbnSearchSection).addView(statusText);
+        renderKeyStatus((LinearLayout) isbnSearchSection);
+        renderManualInput((LinearLayout) isbnSearchSection);
 
-        TextView listTitle = ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
+        librarySection = ui.column(12);
+        root.addView(librarySection);
+        TextView listTitle = ui.text(CatalogUiContract.LIBRARY_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
         titleParams.setMargins(0, ui.dp(18), 0, ui.dp(6));
         listTitle.setLayoutParams(titleParams);
-        root.addView(listTitle);
-        renderSavedBookControls(root);
+        ((LinearLayout) librarySection).addView(listTitle);
+        ((LinearLayout) librarySection).addView(
+                ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 13, UiKit.TEXT_SECONDARY, Typeface.BOLD));
+        renderSavedBookControls((LinearLayout) librarySection);
         LinearLayout bookList = ui.column(8);
-        root.addView(bookList);
+        ((LinearLayout) librarySection).addView(bookList);
         bookListRenderer = new BookListRenderer(ui, bookList);
-        return scroll;
+        return pageScroll;
+    }
+
+    private void renderMenu(LinearLayout root) {
+        menuPanel = ui.column(8);
+        menuPanel.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
+        menuPanel.setBackgroundColor(UiKit.SURFACE_SECONDARY);
+        menuPanel.setVisibility(View.GONE);
+
+        Button isbnSearchButton = ui.button(CatalogUiContract.MENU_ISBN_SEARCH);
+        isbnSearchButton.setOnClickListener(view -> {
+            toggleMenu();
+            scrollToSection(isbnSearchSection);
+            if (isbnInput != null) {
+                isbnInput.requestFocus();
+            }
+        });
+        Button libraryButton = ui.button(CatalogUiContract.MENU_LIBRARY);
+        libraryButton.setOnClickListener(view -> {
+            toggleMenu();
+            scrollToSection(librarySection);
+            if (savedSearchInput != null) {
+                savedSearchInput.requestFocus();
+            }
+        });
+        menuPanel.addView(isbnSearchButton);
+        menuPanel.addView(libraryButton);
+        root.addView(menuPanel);
+    }
+
+    private void toggleMenu() {
+        if (menuPanel == null) {
+            return;
+        }
+        int nextVisibility = menuPanel.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE;
+        menuPanel.setVisibility(nextVisibility);
+    }
+
+    private void scrollToSection(View section) {
+        if (pageScroll == null || section == null) {
+            return;
+        }
+        pageScroll.post(() -> pageScroll.smoothScrollTo(0, section.getTop()));
     }
 
     private void renderKeyStatus(LinearLayout root) {

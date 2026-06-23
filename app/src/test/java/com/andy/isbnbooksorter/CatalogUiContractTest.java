@@ -9,6 +9,11 @@ public final class CatalogUiContractTest {
     @Test
     public void savedBookControlsUseMobileCatalogLabels() {
         assertEquals("ISBN 도서 정리", CatalogUiContract.APP_TITLE);
+        assertEquals("☰ 메뉴", CatalogUiContract.MENU_TOGGLE);
+        assertEquals("ISBN 검색하기", CatalogUiContract.MENU_ISBN_SEARCH);
+        assertEquals("LIBRARY", CatalogUiContract.MENU_LIBRARY);
+        assertEquals("ISBN 검색하기", CatalogUiContract.ISBN_SEARCH_TITLE);
+        assertEquals("LIBRARY", CatalogUiContract.LIBRARY_TITLE);
         assertEquals("ISBN 직접 입력", CatalogUiContract.ISBN_INPUT_HINT);
         assertEquals("카테고리 직접 지정(선택)", CatalogUiContract.CATEGORY_INPUT_HINT);
         assertEquals("저장된 책 검색(제목/저자/출판사/ISBN/분류/출처)", CatalogUiContract.SAVED_SEARCH_HINT);
