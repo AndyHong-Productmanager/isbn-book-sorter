@@ -28,6 +28,10 @@ final class BibliographyClient {
         Book find() throws Exception;
     }
 
+    interface FieldReader {
+        String read(String key);
+    }
+
     private static final String EMPTY = "";
     private final String nationalLibraryKey;
     private final String aladinKey;
@@ -90,11 +94,11 @@ final class BibliographyClient {
         JSONObject doc = docs.getJSONObject(0);
         return new Book(
                 isbn,
-                firstNonEmpty(doc, "TITLE", "title", "bookname"),
-                firstNonEmpty(doc, "AUTHOR", "author"),
-                firstNonEmpty(doc, "PUBLISHER", "publisher"),
-                firstNonEmpty(doc, "PUBLISH_PREDATE", "publishPredate", "publishDate"),
-                firstNonEmpty(doc, "SUBJECT", "subject", "KDC", "class_no"),
+                firstNonEmpty(doc, "제목 없음", "TITLE", "title", "bookname"),
+                firstNonEmpty(doc, "", "AUTHOR", "author"),
+                firstNonEmpty(doc, "", "PUBLISHER", "publisher"),
+                firstNonEmpty(doc, "", "PUBLISH_PREDATE", "publishPredate", "publishDate"),
+                firstNonEmpty(doc, "미분류", "SUBJECT", "subject", "KDC", "class_no"),
                 "국립중앙도서관",
                 "",
                 0,
@@ -219,14 +223,18 @@ final class BibliographyClient {
         return "&key=" + encode(googleBooksKey);
     }
 
-    private static String firstNonEmpty(JSONObject object, String... keys) {
+    private static String firstNonEmpty(JSONObject object, String fallback, String... keys) {
+        return firstNonEmpty(key -> object.optString(key, EMPTY), fallback, keys);
+    }
+
+    static String firstNonEmpty(FieldReader reader, String fallback, String... keys) {
         for (String key : keys) {
-            String value = object.optString(key, EMPTY).trim();
+            String value = reader.read(key).trim();
             if (!value.isEmpty()) {
                 return value;
             }
         }
-        return "미분류";
+        return fallback;
     }
 
     private static String joinArray(JSONArray array) {

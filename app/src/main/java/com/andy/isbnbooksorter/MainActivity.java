@@ -1,10 +1,15 @@
 package com.andy.isbnbooksorter;
 
 import android.Manifest;
-import android.net.Uri;
+import android.annotation.TargetApi;
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -111,7 +116,7 @@ public final class MainActivity extends ComponentActivity {
         scanner = new ScannerController(this, preview, new ScannerController.Listener() {
             @Override
             public void onIsbnDetected(String isbn) {
-                runOnUiThread(() -> lookup(isbn));
+                runOnUiThread(() -> lookup(isbn, textFrom(categoryInput)));
             }
 
             @Override
@@ -250,7 +255,7 @@ public final class MainActivity extends ComponentActivity {
         status("스캔 중입니다. ISBN 바코드를 프레임 안에 맞춰주세요.", UiKit.ACCENT_PRIMARY);
     }
 
-    private void lookup(String isbn) {
+    private void lookup(String isbn, String categoryOverride) {
         if (!IsbnUtils.isValid(isbn)) {
             status("ISBN 형식에 맞지 않습니다. 숫자 10자리 또는 13자리를 입력하세요.", UiKit.STATUS_ERROR);
             return;
@@ -259,7 +264,7 @@ public final class MainActivity extends ComponentActivity {
         client.lookup(isbn, new BibliographyClient.Callback() {
             @Override
             public void onFound(BookLookupResult result) {
-                runOnUiThread(() -> saveResult(result));
+                runOnUiThread(() -> saveResult(result, categoryOverride));
             }
 
             @Override
@@ -280,11 +285,11 @@ public final class MainActivity extends ComponentActivity {
             status("ISBN 형식에 맞지 않습니다. 숫자 10자리 또는 13자리를 입력하세요.", UiKit.STATUS_ERROR);
             return;
         }
-        lookup(isbn);
+        lookup(isbn, textFrom(categoryInput));
     }
 
-    private void saveResult(BookLookupResult result) {
-        String manualCategory = categoryInput.getText().toString().trim();
+    private void saveResult(BookLookupResult result, String categoryOverride) {
+        String manualCategory = categoryOverride.trim();
         Book book = result.book;
         if (!manualCategory.isEmpty()) {
             book = book.withCategory(manualCategory);
@@ -335,10 +340,33 @@ public final class MainActivity extends ComponentActivity {
             status("내보낼 현재 목록이 없습니다.", UiKit.STATUS_WARNING);
             return;
         }
-        csvExportLauncher.launch("isbn-books-" + timestampForFileName() + ".csv");
+        String fileName = "isbn-books-" + timestampForFileName() + ".csv";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            exportVisibleBooksToDownloads(fileName);
+            return;
+        }
+        csvExportLauncher.launch(fileName);
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    private void exportVisibleBooksToDownloads(String fileName) {
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+        values.put(MediaStore.MediaColumns.MIME_TYPE, "text/csv");
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+        if (uri == null) {
+            status("CSV 파일을 만들 수 없습니다.", UiKit.STATUS_ERROR);
+            return;
+        }
+        exportVisibleBooks(uri, "Downloads/" + fileName);
     }
 
     private void exportVisibleBooks(Uri uri) {
+        exportVisibleBooks(uri, null);
+    }
+
+    private void exportVisibleBooks(Uri uri, String savedLocation) {
         String csv = CsvExporter.exportBooks(currentVisibleBooks);
         try (OutputStream stream = getContentResolver().openOutputStream(uri)) {
             if (stream == null) {
@@ -346,7 +374,8 @@ public final class MainActivity extends ComponentActivity {
                 return;
             }
             stream.write(csv.getBytes(StandardCharsets.UTF_8));
-            status("현재 목록 " + currentVisibleBooks.size() + "권을 CSV로 내보냈습니다.", UiKit.ACCENT_PRIMARY);
+            String locationNote = savedLocation == null ? "" : " (" + savedLocation + ")";
+            status("현재 목록 " + currentVisibleBooks.size() + "권을 CSV로 내보냈습니다." + locationNote, UiKit.ACCENT_PRIMARY);
         } catch (Exception exception) {
             status("CSV 내보내기에 실패했습니다.", UiKit.STATUS_ERROR);
         }
