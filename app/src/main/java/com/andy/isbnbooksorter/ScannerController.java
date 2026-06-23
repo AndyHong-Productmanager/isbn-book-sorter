@@ -131,15 +131,23 @@ final class ScannerController {
                 continue;
             }
             String rawValue = barcode.getRawValue();
-            if (rawValue == null) {
-                continue;
-            }
-            String isbn = IsbnUtils.normalize(rawValue);
-            if (IsbnUtils.isValid(isbn)) {
+            String isbn = isbnFromBarcodeValue(format, rawValue);
+            if (!isbn.isEmpty()) {
                 paused = true;
                 listener.onIsbnDetected(isbn);
                 return;
             }
         }
+    }
+
+    static String isbnFromBarcodeValue(int format, String rawValue) {
+        if (format != Barcode.FORMAT_EAN_13 || rawValue == null) {
+            return "";
+        }
+        String isbn = IsbnUtils.normalize(rawValue);
+        if (!IsbnUtils.isBooklandIsbn13(isbn)) {
+            return "";
+        }
+        return isbn;
     }
 }
