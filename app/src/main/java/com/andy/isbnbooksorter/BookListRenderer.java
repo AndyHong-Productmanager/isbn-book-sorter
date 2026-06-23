@@ -14,12 +14,18 @@ final class BookListRenderer {
     private static final SimpleDateFormat SAVED_AT_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.KOREA);
 
+    interface Listener {
+        void onBookSelected(Book book);
+    }
+
     private final UiKit ui;
     private final LinearLayout target;
+    private final Listener listener;
 
-    BookListRenderer(UiKit ui, LinearLayout target) {
+    BookListRenderer(UiKit ui, LinearLayout target, Listener listener) {
         this.ui = ui;
         this.target = target;
+        this.listener = listener;
     }
 
     void render(List<Book> books) {
@@ -63,6 +69,9 @@ final class BookListRenderer {
         LinearLayout row = ui.column(4);
         row.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10));
         row.setBackgroundColor(UiKit.SURFACE_SECONDARY);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(view -> listener.onBookSelected(book));
         row.addView(ui.text(book.title, 16, UiKit.TEXT_PRIMARY, Typeface.BOLD));
         row.addView(ui.text("저자: " + display(book.authors), 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         row.addView(ui.text(
@@ -89,6 +98,7 @@ final class BookListRenderer {
                 Typeface.NORMAL);
         isbn.setTypeface(Typeface.MONOSPACE);
         row.addView(isbn);
+        row.addView(ui.text(CatalogUiContract.BOOK_DETAIL_HINT, 12, UiKit.ACCENT_PRIMARY, Typeface.BOLD));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);

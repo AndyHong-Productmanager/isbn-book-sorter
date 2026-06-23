@@ -21,6 +21,9 @@ public final class CatalogUiContractTest {
         assertEquals("적용", CatalogUiContract.APPLY_FILTERS);
         assertEquals("초기화", CatalogUiContract.CLEAR_FILTERS);
         assertEquals("현재 목록 CSV 내보내기", CatalogUiContract.EXPORT_VISIBLE_CSV);
+        assertEquals("눌러서 서지정보 상세보기", CatalogUiContract.BOOK_DETAIL_HINT);
+        assertEquals("서지정보 상세", CatalogUiContract.BOOK_DETAIL_TITLE);
+        assertEquals("닫기", CatalogUiContract.BOOK_DETAIL_CLOSE);
         assertEquals("아직 저장된 책이 없습니다. ISBN을 스캔하거나 직접 입력하세요.", CatalogUiContract.EMPTY_LIBRARY_MESSAGE);
     }
 

@@ -94,9 +94,17 @@ All spacing derives from a base of 4dp.
 - **Structure**: category heading with count, repeated book rows.
 - **Variants**: populated, empty.
 - **Spacing**: --space-3 and --space-4.
-- **States**: empty state explains how to add the first book.
+- **States**: empty state explains how to add the first book; populated rows are clickable and open a full bibliographic detail view.
 - **Accessibility**: title, author, publisher, ISBN, and source are visible text.
 - **Motion**: none.
+
+### Book Detail Dialog
+- **Structure**: scrollable label/value bibliography fields with a single close action.
+- **Variants**: complete metadata, missing fields shown as "정보 없음".
+- **Spacing**: --space-2 and --space-3.
+- **States**: opened from a saved book row.
+- **Accessibility**: every bibliographic label is visible text; ISBN keeps monospace styling.
+- **Motion**: native dialog transition only.
 
 ## 6. Motion & Interaction
 

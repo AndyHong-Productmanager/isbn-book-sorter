@@ -2,6 +2,8 @@ package com.andy.isbnbooksorter;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
+import android.content.Context;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
@@ -11,6 +13,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -35,6 +38,9 @@ import java.util.List;
 import java.util.Locale;
 
 public final class MainActivity extends ComponentActivity {
+    private static final SimpleDateFormat DETAIL_SAVED_AT_FORMAT =
+            new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.KOREA);
+
     private BookRepository repository;
     private BibliographyClient client;
     private ScannerController scanner;
@@ -178,7 +184,7 @@ public final class MainActivity extends ComponentActivity {
         renderSavedBookControls((LinearLayout) librarySection);
         LinearLayout bookList = ui.column(8);
         ((LinearLayout) librarySection).addView(bookList);
-        bookListRenderer = new BookListRenderer(ui, bookList);
+        bookListRenderer = new BookListRenderer(ui, bookList, this::showBookDetails);
         return pageScroll;
     }
 
@@ -200,9 +206,6 @@ public final class MainActivity extends ComponentActivity {
         libraryButton.setOnClickListener(view -> {
             toggleMenu();
             scrollToSection(librarySection);
-            if (savedSearchInput != null) {
-                savedSearchInput.requestFocus();
-            }
         });
         menuPanel.addView(isbnSearchButton);
         menuPanel.addView(libraryButton);
@@ -361,9 +364,53 @@ public final class MainActivity extends ComponentActivity {
         repository.save(book);
         isbnInput.setText("");
         categoryInput.setText("");
+        isbnInput.clearFocus();
+        categoryInput.clearFocus();
+        hideKeyboard();
         renderBooks();
+        scrollToSection(librarySection);
         String fallbackNote = result.fallbackUsed ? " (" + book.source + " 대체 조회)" : "";
         status("저장 완료: " + book.title + fallbackNote, UiKit.ACCENT_PRIMARY);
+    }
+
+    private void showBookDetails(Book book) {
+        ScrollView detailScroll = new ScrollView(this);
+        detailScroll.setFillViewport(false);
+
+        LinearLayout content = ui.column(8);
+        int horizontalPadding = ui.dp(18);
+        int verticalPadding = ui.dp(12);
+        content.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding);
+        detailScroll.addView(content);
+
+        addDetail(content, "제목", book.title);
+        addDetail(content, "저자", book.authors);
+        addDetail(content, "출판사", book.publisher);
+        addDetail(content, "출판일", book.publishedDate);
+        addDetail(content, "카테고리", book.category);
+        addDetail(content, "ISBN", book.isbn);
+        addDetail(content, "출처", book.source);
+        addDetail(content, "페이지", book.pageCount > 0 ? String.valueOf(book.pageCount) : "");
+        addDetail(content, "표지 URL", book.thumbnailUrl);
+        addDetail(content, "저장일", formatDetailSavedAt(book.savedAt));
+        addDetail(content, "설명", book.description);
+
+        new AlertDialog.Builder(this)
+                .setTitle(CatalogUiContract.BOOK_DETAIL_TITLE)
+                .setView(detailScroll)
+                .setPositiveButton(CatalogUiContract.BOOK_DETAIL_CLOSE, null)
+                .show();
+    }
+
+    private void addDetail(LinearLayout content, String label, String value) {
+        TextView labelView = ui.text(label, 12, UiKit.TEXT_SECONDARY, Typeface.BOLD);
+        TextView valueView = ui.text(display(value), 15, UiKit.TEXT_PRIMARY, Typeface.NORMAL);
+        valueView.setLineSpacing(ui.dp(2), 1.0f);
+        if ("ISBN".equals(label)) {
+            valueView.setTypeface(Typeface.MONOSPACE);
+        }
+        content.addView(labelView);
+        content.addView(valueView);
     }
 
     private void renderBooks() {
@@ -450,6 +497,32 @@ public final class MainActivity extends ComponentActivity {
             return "";
         }
         return input.getText().toString().trim();
+    }
+
+    private void hideKeyboard() {
+        View focused = getCurrentFocus();
+        if (focused == null) {
+            return;
+        }
+        InputMethodManager manager =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (manager != null) {
+            manager.hideSoftInputFromWindow(focused.getWindowToken(), 0);
+        }
+    }
+
+    private static String display(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "정보 없음";
+        }
+        return value.trim();
+    }
+
+    private static String formatDetailSavedAt(long savedAt) {
+        if (savedAt <= 0L) {
+            return "";
+        }
+        return DETAIL_SAVED_AT_FORMAT.format(new Date(savedAt));
     }
 
     private static BookListQuery.Sort sortFromPosition(int position) {

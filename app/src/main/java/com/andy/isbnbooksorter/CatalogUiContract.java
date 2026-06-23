@@ -17,6 +17,9 @@ final class CatalogUiContract {
     static final String APPLY_FILTERS = "적용";
     static final String CLEAR_FILTERS = "초기화";
     static final String EXPORT_VISIBLE_CSV = "현재 목록 CSV 내보내기";
+    static final String BOOK_DETAIL_HINT = "눌러서 서지정보 상세보기";
+    static final String BOOK_DETAIL_TITLE = "서지정보 상세";
+    static final String BOOK_DETAIL_CLOSE = "닫기";
     static final String EMPTY_LIBRARY_MESSAGE = "아직 저장된 책이 없습니다. ISBN을 스캔하거나 직접 입력하세요.";
     static final String EMPTY_FILTERED_MESSAGE = "조건에 맞는 저장된 책이 없습니다. 검색어나 카테고리 필터를 지워보세요.";
 
