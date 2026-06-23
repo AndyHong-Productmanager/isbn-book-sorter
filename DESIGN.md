@@ -98,13 +98,13 @@ All spacing derives from a base of 4dp.
 - **Accessibility**: title, author, publisher, ISBN, and source are visible text.
 - **Motion**: none.
 
-### Book Detail Dialog
-- **Structure**: scrollable label/value bibliography fields with a single close action.
+### Book Detail Page
+- **Structure**: full-page, scrollable label/value bibliography fields with a single return-to-library action.
 - **Variants**: complete metadata, missing fields shown as "정보 없음".
 - **Spacing**: --space-2 and --space-3.
 - **States**: opened from a saved book row.
 - **Accessibility**: title, subtitle, author, translator, publisher, publication date, category, ISBN, source, language, price, page count, cover URL, saved date, description, introduction, contents, and table of contents are visible text; ISBN keeps monospace styling.
-- **Motion**: native dialog transition only.
+- **Motion**: page transition by immediate content replacement.
 
 ## 6. Motion & Interaction
 

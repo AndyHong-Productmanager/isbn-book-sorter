@@ -2,7 +2,6 @@ package com.andy.isbnbooksorter;
 
 import android.Manifest;
 import android.annotation.TargetApi;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
@@ -41,6 +40,12 @@ public final class MainActivity extends ComponentActivity {
     private static final SimpleDateFormat DETAIL_SAVED_AT_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.KOREA);
 
+    private enum AppPage {
+        ISBN_SEARCH,
+        LIBRARY,
+        BOOK_DETAIL
+    }
+
     private BookRepository repository;
     private BibliographyClient client;
     private ScannerController scanner;
@@ -50,8 +55,6 @@ public final class MainActivity extends ComponentActivity {
     private ActivityResultLauncher<String> csvExportLauncher;
     private ScrollView pageScroll;
     private LinearLayout menuPanel;
-    private View isbnSearchSection;
-    private View librarySection;
     private TextView statusText;
     private EditText isbnInput;
     private EditText categoryInput;
@@ -59,6 +62,8 @@ public final class MainActivity extends ComponentActivity {
     private EditText savedCategoryFilterInput;
     private Spinner sortSpinner;
     private BookListQuery.Sort currentSort = BookListQuery.Sort.SAVED_NEWEST;
+    private AppPage currentPage = AppPage.ISBN_SEARCH;
+    private Book selectedBook;
     private final List<Book> currentVisibleBooks = new ArrayList<>();
 
     @Override
@@ -83,8 +88,7 @@ public final class MainActivity extends ComponentActivity {
                         exportVisibleBooks(uri);
                     }
                 });
-        setContentView(createContent());
-        renderBooks();
+        showSearchPage();
         if (hasCameraPermission()) {
             status("카메라 준비 완료. ISBN 바코드를 화면에 맞춰주세요.", UiKit.TEXT_SECONDARY);
         } else {
@@ -103,6 +107,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private View createContent() {
+        resetPageViews();
         pageScroll = new ScrollView(this);
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
@@ -122,10 +127,25 @@ public final class MainActivity extends ComponentActivity {
         root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         renderMenu(root);
 
-        isbnSearchSection = ui.column(12);
-        root.addView(isbnSearchSection);
-        ((LinearLayout) isbnSearchSection).addView(
-                ui.text(CatalogUiContract.ISBN_SEARCH_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD));
+        switch (currentPage) {
+            case LIBRARY:
+                renderLibraryPage(root);
+                break;
+            case BOOK_DETAIL:
+                renderDetailPage(root);
+                break;
+            case ISBN_SEARCH:
+            default:
+                renderSearchPage(root);
+                break;
+        }
+        return pageScroll;
+    }
+
+    private void renderSearchPage(LinearLayout root) {
+        LinearLayout searchPage = ui.column(12);
+        root.addView(searchPage);
+        searchPage.addView(ui.text(CatalogUiContract.ISBN_SEARCH_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD));
 
         PreviewView preview = new PreviewView(this);
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
@@ -134,7 +154,7 @@ public final class MainActivity extends ComponentActivity {
         previewParams.setMargins(0, ui.dp(16), 0, ui.dp(12));
         preview.setLayoutParams(previewParams);
         preview.setBackgroundColor(UiKit.SCANNER_SURFACE);
-        ((LinearLayout) isbnSearchSection).addView(preview);
+        searchPage.addView(preview);
 
         scanner = new ScannerController(this, preview, new ScannerController.Listener() {
             @Override
@@ -160,32 +180,85 @@ public final class MainActivity extends ComponentActivity {
         });
         scanActions.addView(scanButton);
         scanActions.addView(pauseButton);
-        ((LinearLayout) isbnSearchSection).addView(scanActions);
+        searchPage.addView(scanActions);
 
         statusText = ui.text("", 13, UiKit.TEXT_SECONDARY, Typeface.NORMAL);
         statusText.setMinHeight(ui.dp(40));
         statusText.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8));
         statusText.setBackgroundColor(UiKit.SURFACE_SECONDARY);
-        ((LinearLayout) isbnSearchSection).addView(statusText);
-        renderKeyStatus((LinearLayout) isbnSearchSection);
-        renderManualInput((LinearLayout) isbnSearchSection);
+        searchPage.addView(statusText);
+        renderKeyStatus(searchPage);
+        renderManualInput(searchPage);
+    }
 
-        librarySection = ui.column(12);
-        root.addView(librarySection);
+    private void renderLibraryPage(LinearLayout root) {
+        LinearLayout libraryPage = ui.column(12);
+        root.addView(libraryPage);
         TextView listTitle = ui.text(CatalogUiContract.LIBRARY_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
         titleParams.setMargins(0, ui.dp(18), 0, ui.dp(6));
         listTitle.setLayoutParams(titleParams);
-        ((LinearLayout) librarySection).addView(listTitle);
-        ((LinearLayout) librarySection).addView(
-                ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 13, UiKit.TEXT_SECONDARY, Typeface.BOLD));
-        renderSavedBookControls((LinearLayout) librarySection);
+        libraryPage.addView(listTitle);
+        libraryPage.addView(ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 13, UiKit.TEXT_SECONDARY, Typeface.BOLD));
+        renderSavedBookControls(libraryPage);
         LinearLayout bookList = ui.column(8);
-        ((LinearLayout) librarySection).addView(bookList);
+        libraryPage.addView(bookList);
         bookListRenderer = new BookListRenderer(ui, bookList, this::showBookDetails);
-        return pageScroll;
+        renderBooks();
+    }
+
+    private void renderDetailPage(LinearLayout root) {
+        Book book = selectedBook;
+        if (book == null) {
+            renderLibraryPage(root);
+            return;
+        }
+
+        Button backButton = ui.button(CatalogUiContract.BACK_TO_LIBRARY);
+        backButton.setOnClickListener(view -> showLibraryPage());
+        root.addView(backButton);
+        root.addView(ui.text(CatalogUiContract.BOOK_DETAIL_TITLE, 20, UiKit.TEXT_PRIMARY, Typeface.BOLD));
+
+        LinearLayout content = ui.column(8);
+        content.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(24));
+        content.setBackgroundColor(UiKit.SURFACE_SECONDARY);
+        root.addView(content);
+        addDetail(content, "제목", book.title);
+        addDetail(content, "부제", book.subtitle);
+        addDetail(content, "저자", book.authors);
+        addDetail(content, "번역", book.translators);
+        addDetail(content, "출판사", book.publisher);
+        addDetail(content, "출판일", book.publishedDate);
+        addDetail(content, "카테고리", book.category);
+        addDetail(content, "ISBN", book.isbn);
+        addDetail(content, "출처", book.source);
+        addDetail(content, "언어", book.language);
+        addDetail(content, "가격", book.price);
+        addDetail(content, "페이지", book.pageCount > 0 ? String.valueOf(book.pageCount) : "");
+        addDetail(content, "표지 URL", book.thumbnailUrl);
+        addDetail(content, "저장일", formatDetailSavedAt(book.savedAt));
+        addDetail(content, "설명", book.description);
+        addDetail(content, "소개", book.introduction);
+        addDetail(content, "내용", book.contents);
+        addDetail(content, "목차", book.tableOfContents);
+
+        Button bottomBackButton = ui.button(CatalogUiContract.BACK_TO_LIBRARY);
+        bottomBackButton.setOnClickListener(view -> showLibraryPage());
+        root.addView(bottomBackButton);
+    }
+
+    private void resetPageViews() {
+        pageScroll = null;
+        menuPanel = null;
+        statusText = null;
+        isbnInput = null;
+        categoryInput = null;
+        savedSearchInput = null;
+        savedCategoryFilterInput = null;
+        sortSpinner = null;
+        bookListRenderer = null;
     }
 
     private void renderMenu(LinearLayout root) {
@@ -197,15 +270,12 @@ public final class MainActivity extends ComponentActivity {
         Button isbnSearchButton = ui.button(CatalogUiContract.MENU_ISBN_SEARCH);
         isbnSearchButton.setOnClickListener(view -> {
             toggleMenu();
-            scrollToSection(isbnSearchSection);
-            if (isbnInput != null) {
-                isbnInput.requestFocus();
-            }
+            showSearchPage();
         });
         Button libraryButton = ui.button(CatalogUiContract.MENU_LIBRARY);
         libraryButton.setOnClickListener(view -> {
             toggleMenu();
-            scrollToSection(librarySection);
+            showLibraryPage();
         });
         menuPanel.addView(isbnSearchButton);
         menuPanel.addView(libraryButton);
@@ -220,11 +290,25 @@ public final class MainActivity extends ComponentActivity {
         menuPanel.setVisibility(nextVisibility);
     }
 
-    private void scrollToSection(View section) {
-        if (pageScroll == null || section == null) {
-            return;
-        }
-        pageScroll.post(() -> pageScroll.smoothScrollTo(0, section.getTop()));
+    private void showSearchPage() {
+        shutdownScanner();
+        currentPage = AppPage.ISBN_SEARCH;
+        selectedBook = null;
+        setContentView(createContent());
+    }
+
+    private void showLibraryPage() {
+        shutdownScanner();
+        currentPage = AppPage.LIBRARY;
+        selectedBook = null;
+        setContentView(createContent());
+    }
+
+    private void showDetailPage(Book book) {
+        shutdownScanner();
+        currentPage = AppPage.BOOK_DETAIL;
+        selectedBook = book;
+        setContentView(createContent());
     }
 
     private void renderKeyStatus(LinearLayout root) {
@@ -367,46 +451,13 @@ public final class MainActivity extends ComponentActivity {
         isbnInput.clearFocus();
         categoryInput.clearFocus();
         hideKeyboard();
-        renderBooks();
-        scrollToSection(librarySection);
+        showLibraryPage();
         String fallbackNote = result.fallbackUsed ? " (" + book.source + " 대체 조회)" : "";
         status("저장 완료: " + book.title + fallbackNote, UiKit.ACCENT_PRIMARY);
     }
 
     private void showBookDetails(Book book) {
-        ScrollView detailScroll = new ScrollView(this);
-        detailScroll.setFillViewport(false);
-
-        LinearLayout content = ui.column(8);
-        int horizontalPadding = ui.dp(18);
-        int verticalPadding = ui.dp(12);
-        content.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding);
-        detailScroll.addView(content);
-
-        addDetail(content, "제목", book.title);
-        addDetail(content, "부제", book.subtitle);
-        addDetail(content, "저자", book.authors);
-        addDetail(content, "번역", book.translators);
-        addDetail(content, "출판사", book.publisher);
-        addDetail(content, "출판일", book.publishedDate);
-        addDetail(content, "카테고리", book.category);
-        addDetail(content, "ISBN", book.isbn);
-        addDetail(content, "출처", book.source);
-        addDetail(content, "언어", book.language);
-        addDetail(content, "가격", book.price);
-        addDetail(content, "페이지", book.pageCount > 0 ? String.valueOf(book.pageCount) : "");
-        addDetail(content, "표지 URL", book.thumbnailUrl);
-        addDetail(content, "저장일", formatDetailSavedAt(book.savedAt));
-        addDetail(content, "설명", book.description);
-        addDetail(content, "소개", book.introduction);
-        addDetail(content, "내용", book.contents);
-        addDetail(content, "목차", book.tableOfContents);
-
-        new AlertDialog.Builder(this)
-                .setTitle(CatalogUiContract.BOOK_DETAIL_TITLE)
-                .setView(detailScroll)
-                .setPositiveButton(CatalogUiContract.BOOK_DETAIL_CLOSE, null)
-                .show();
+        showDetailPage(book);
     }
 
     private void addDetail(LinearLayout content, String label, String value) {
@@ -441,11 +492,10 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void status(String message, int color) {
-        if (statusText == null) {
-            return;
+        if (statusText != null) {
+            statusText.setText(message);
+            statusText.setTextColor(color);
         }
-        statusText.setText(message);
-        statusText.setTextColor(color);
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
@@ -516,6 +566,14 @@ public final class MainActivity extends ComponentActivity {
         if (manager != null) {
             manager.hideSoftInputFromWindow(focused.getWindowToken(), 0);
         }
+    }
+
+    private void shutdownScanner() {
+        if (scanner == null) {
+            return;
+        }
+        scanner.shutdown();
+        scanner = null;
     }
 
     private static String display(String value) {
