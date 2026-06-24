@@ -2,9 +2,10 @@ package com.andy.isbnbooksorter;
 
 import android.Manifest;
 import android.annotation.TargetApi;
-import android.content.Context;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -12,11 +13,13 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -55,6 +58,7 @@ public final class MainActivity extends ComponentActivity {
     private ActivityResultLauncher<String> csvExportLauncher;
     private ScrollView pageScroll;
     private LinearLayout menuPanel;
+    private PopupWindow menuPopup;
     private TextView statusText;
     private EditText isbnInput;
     private EditText categoryInput;
@@ -98,6 +102,7 @@ public final class MainActivity extends ComponentActivity {
 
     @Override
     protected void onDestroy() {
+        dismissMenu();
         if (scanner != null) {
             scanner.shutdown();
         }
@@ -112,13 +117,12 @@ public final class MainActivity extends ComponentActivity {
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
         LinearLayout root = ui.column(12);
-        root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), ui.dp(16));
+        root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), pageBottomPadding());
         pageScroll.addView(root);
 
         LinearLayout header = ui.row(12);
-        Button menuButton = ui.button(CatalogUiContract.MENU_TOGGLE);
-        menuButton.setMinWidth(ui.dp(104));
-        menuButton.setOnClickListener(view -> toggleMenu());
+        Button menuButton = ui.iconButton("☰", CatalogUiContract.MENU_TOGGLE);
+        menuButton.setOnClickListener(this::toggleMenu);
         TextView title = ui.text(CatalogUiContract.APP_TITLE, 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         header.addView(menuButton);
@@ -127,7 +131,6 @@ public final class MainActivity extends ComponentActivity {
         if (currentPage == AppPage.ISBN_SEARCH) {
             root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         }
-        renderMenu(root);
 
         switch (currentPage) {
             case LIBRARY:
@@ -148,6 +151,14 @@ public final class MainActivity extends ComponentActivity {
         int statusBarId = getResources().getIdentifier("status_bar_height", "dimen", "android");
         int statusBarHeight = statusBarId > 0 ? getResources().getDimensionPixelSize(statusBarId) : 0;
         return statusBarHeight + ui.dp(12);
+    }
+
+    private int pageBottomPadding() {
+        int navigationBarId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+        int navigationBarHeight = navigationBarId > 0
+                ? getResources().getDimensionPixelSize(navigationBarId)
+                : 0;
+        return navigationBarHeight + ui.dp(24);
     }
 
     private void renderSearchPage(LinearLayout root) {
@@ -224,15 +235,16 @@ public final class MainActivity extends ComponentActivity {
             return;
         }
 
-        Button backButton = ui.button(CatalogUiContract.BACK_TO_LIBRARY);
+        root.addView(ui.text(CatalogUiContract.BOOK_DETAIL_TITLE, 20, UiKit.TEXT_PRIMARY, Typeface.BOLD));
+
+        Button backButton = ui.secondaryButton(CatalogUiContract.BACK_TO_LIBRARY);
         backButton.setOnClickListener(view -> showLibraryPage());
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        backParams.setMargins(0, 0, 0, ui.dp(4));
+        backParams.setMargins(0, 0, 0, ui.dp(8));
         backButton.setLayoutParams(backParams);
         root.addView(backButton);
-        root.addView(ui.text(CatalogUiContract.BOOK_DETAIL_TITLE, 20, UiKit.TEXT_PRIMARY, Typeface.BOLD));
 
         LinearLayout content = ui.column(6);
         content.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(16));
@@ -270,13 +282,10 @@ public final class MainActivity extends ComponentActivity {
         addDetail(content, "소개", book.introduction);
         addDetail(content, "내용", book.contents);
         addDetail(content, "목차", book.tableOfContents);
-
-        Button bottomBackButton = ui.button(CatalogUiContract.BACK_TO_LIBRARY);
-        bottomBackButton.setOnClickListener(view -> showLibraryPage());
-        root.addView(bottomBackButton);
     }
 
     private void resetPageViews() {
+        dismissMenu();
         pageScroll = null;
         menuPanel = null;
         statusText = null;
@@ -288,33 +297,47 @@ public final class MainActivity extends ComponentActivity {
         bookListRenderer = null;
     }
 
-    private void renderMenu(LinearLayout root) {
+    private LinearLayout createMenuPanel() {
         menuPanel = ui.column(8);
         menuPanel.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
         menuPanel.setBackgroundColor(UiKit.SURFACE_SECONDARY);
-        menuPanel.setVisibility(View.GONE);
 
         Button isbnSearchButton = ui.button(CatalogUiContract.MENU_ISBN_SEARCH);
         isbnSearchButton.setOnClickListener(view -> {
-            toggleMenu();
+            dismissMenu();
             showSearchPage();
         });
         Button libraryButton = ui.button(CatalogUiContract.MENU_LIBRARY);
         libraryButton.setOnClickListener(view -> {
-            toggleMenu();
+            dismissMenu();
             showLibraryPage();
         });
         menuPanel.addView(isbnSearchButton);
         menuPanel.addView(libraryButton);
-        root.addView(menuPanel);
+        return menuPanel;
     }
 
-    private void toggleMenu() {
-        if (menuPanel == null) {
+    private void toggleMenu(View anchor) {
+        if (menuPopup != null && menuPopup.isShowing()) {
+            dismissMenu();
             return;
         }
-        int nextVisibility = menuPanel.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE;
-        menuPanel.setVisibility(nextVisibility);
+        LinearLayout panel = createMenuPanel();
+        menuPopup = new PopupWindow(
+                panel,
+                ui.dp(196),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true);
+        menuPopup.setOutsideTouchable(true);
+        menuPopup.setBackgroundDrawable(new ColorDrawable(UiKit.SURFACE_SECONDARY));
+        menuPopup.showAsDropDown(anchor, 0, ui.dp(4));
+    }
+
+    private void dismissMenu() {
+        if (menuPopup != null) {
+            menuPopup.dismiss();
+            menuPopup = null;
+        }
     }
 
     private void showSearchPage() {
