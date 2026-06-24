@@ -18,6 +18,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
@@ -60,6 +61,7 @@ public final class MainActivity extends ComponentActivity {
     private LinearLayout menuPanel;
     private PopupWindow menuPopup;
     private TextView statusText;
+    private View scannerPausedOverlay;
     private EditText isbnInput;
     private EditText categoryInput;
     private EditText savedSearchInput;
@@ -166,19 +168,37 @@ public final class MainActivity extends ComponentActivity {
         root.addView(searchPage);
         searchPage.addView(ui.text(CatalogUiContract.ISBN_SEARCH_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD));
 
-        PreviewView preview = new PreviewView(this);
+        FrameLayout previewFrame = new FrameLayout(this);
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 ui.dp(260));
         previewParams.setMargins(0, ui.dp(16), 0, ui.dp(12));
-        preview.setLayoutParams(previewParams);
+        previewFrame.setLayoutParams(previewParams);
+        previewFrame.setBackgroundColor(android.graphics.Color.BLACK);
+
+        PreviewView preview = new PreviewView(this);
+        preview.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
         preview.setBackgroundColor(UiKit.SCANNER_SURFACE);
-        searchPage.addView(preview);
+        previewFrame.addView(preview);
+
+        scannerPausedOverlay = new View(this);
+        scannerPausedOverlay.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        scannerPausedOverlay.setBackgroundColor(android.graphics.Color.BLACK);
+        scannerPausedOverlay.setVisibility(View.VISIBLE);
+        previewFrame.addView(scannerPausedOverlay);
+        searchPage.addView(previewFrame);
 
         scanner = new ScannerController(this, preview, new ScannerController.Listener() {
             @Override
             public void onIsbnDetected(String isbn) {
-                runOnUiThread(() -> lookup(isbn, textFrom(categoryInput)));
+                runOnUiThread(() -> {
+                    showScannerPausedFrame();
+                    lookup(isbn, textFrom(categoryInput));
+                });
             }
 
             @Override
@@ -195,6 +215,7 @@ public final class MainActivity extends ComponentActivity {
         pauseButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         pauseButton.setOnClickListener(view -> {
             scanner.pause();
+            showScannerPausedFrame();
             status("스캔을 일시정지했습니다.", UiKit.TEXT_SECONDARY);
         });
         scanActions.addView(scanButton);
@@ -289,6 +310,7 @@ public final class MainActivity extends ComponentActivity {
         pageScroll = null;
         menuPanel = null;
         statusText = null;
+        scannerPausedOverlay = null;
         isbnInput = null;
         categoryInput = null;
         savedSearchInput = null;
@@ -459,7 +481,20 @@ public final class MainActivity extends ComponentActivity {
             return;
         }
         if (scanner.start()) {
+            showScannerLiveFrame();
             status("스캔 중입니다. ISBN 바코드를 프레임 안에 맞춰주세요.", UiKit.ACCENT_PRIMARY);
+        }
+    }
+
+    private void showScannerLiveFrame() {
+        if (scannerPausedOverlay != null) {
+            scannerPausedOverlay.setVisibility(View.GONE);
+        }
+    }
+
+    private void showScannerPausedFrame() {
+        if (scannerPausedOverlay != null) {
+            scannerPausedOverlay.setVisibility(View.VISIBLE);
         }
     }
 

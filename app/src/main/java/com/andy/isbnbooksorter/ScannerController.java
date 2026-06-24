@@ -40,6 +40,9 @@ final class ScannerController {
     private final Listener listener;
     private final ExecutorService cameraExecutor = Executors.newSingleThreadExecutor();
     private final BarcodeScanner scanner = BarcodeScanning.getClient();
+    private ProcessCameraProvider cameraProvider;
+    private Preview activePreview;
+    private ImageAnalysis activeAnalysis;
     private boolean paused = true;
 
     ScannerController(Activity activity, PreviewView previewView, Listener listener) {
@@ -76,10 +79,24 @@ final class ScannerController {
 
     void pause() {
         paused = true;
+        if (activeAnalysis != null) {
+            activeAnalysis.clearAnalyzer();
+        }
+        if (activePreview != null) {
+            activePreview.setSurfaceProvider(null);
+        }
+        if (cameraProvider != null) {
+            if (activePreview != null && activeAnalysis != null) {
+                cameraProvider.unbind(activePreview, activeAnalysis);
+            }
+            cameraProvider.unbindAll();
+        }
+        activePreview = null;
+        activeAnalysis = null;
     }
 
     void shutdown() {
-        paused = true;
+        pause();
         scanner.close();
         cameraExecutor.shutdownNow();
     }
@@ -87,13 +104,19 @@ final class ScannerController {
     private void bindProvider(ListenableFuture<ProcessCameraProvider> providerFuture) {
         try {
             ProcessCameraProvider provider = providerFuture.get();
+            cameraProvider = provider;
+            provider.unbindAll();
+            if (paused) {
+                return;
+            }
             Preview preview = new Preview.Builder().build();
             ImageAnalysis analysis = new ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build();
+            activePreview = preview;
+            activeAnalysis = analysis;
             preview.setSurfaceProvider(previewView.getSurfaceProvider());
             analysis.setAnalyzer(cameraExecutor, this::analyze);
-            provider.unbindAll();
             provider.bindToLifecycle(
                     (LifecycleOwner) activity,
                     CameraSelector.DEFAULT_BACK_CAMERA,
@@ -133,7 +156,7 @@ final class ScannerController {
             String rawValue = barcode.getRawValue();
             String isbn = isbnFromBarcodeValue(format, rawValue);
             if (!isbn.isEmpty()) {
-                paused = true;
+                pause();
                 listener.onIsbnDetected(isbn);
                 return;
             }
