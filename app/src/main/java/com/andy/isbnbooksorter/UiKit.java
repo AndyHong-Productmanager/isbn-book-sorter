@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.text.LineBreaker;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Layout;
@@ -94,8 +95,8 @@ final class UiKit {
         textView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            textView.setBreakStrategy(Layout.BREAK_STRATEGY_HIGH_QUALITY);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            textView.setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY);
             textView.setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_NORMAL);
         }
         return textView;
