@@ -12,9 +12,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -441,16 +444,38 @@ public final class MainActivity extends ComponentActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sortSpinner.setAdapter(adapter);
         sortSpinner.setMinimumHeight(ui.dp(48));
+        savedSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence text, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence text, int start, int before, int count) {
+                renderBooks();
+            }
+
+            @Override
+            public void afterTextChanged(Editable text) {
+            }
+        });
+        AdapterView.OnItemSelectedListener immediateFilterListener = new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                renderBooks();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        };
+        categoryFilterSpinner.setOnItemSelectedListener(immediateFilterListener);
+        sortSpinner.setOnItemSelectedListener(immediateFilterListener);
 
         LinearLayout actions = ui.row(8);
-        Button applyButton = ui.button(CatalogUiContract.APPLY_FILTERS);
-        applyButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        applyButton.setOnClickListener(view -> {
-            currentSort = sortFromPosition(sortSpinner.getSelectedItemPosition());
-            renderBooks();
-        });
         Button clearButton = ui.button(CatalogUiContract.CLEAR_FILTERS);
-        clearButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        clearButton.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         clearButton.setOnClickListener(view -> {
             savedSearchInput.setText("");
             categoryFilterSpinner.setSelection(0);
@@ -458,7 +483,6 @@ public final class MainActivity extends ComponentActivity {
             currentSort = BookListQuery.Sort.SAVED_NEWEST;
             renderBooks();
         });
-        actions.addView(applyButton);
         actions.addView(clearButton);
 
         Button exportButton = ui.button(CatalogUiContract.EXPORT_VISIBLE_CSV);
