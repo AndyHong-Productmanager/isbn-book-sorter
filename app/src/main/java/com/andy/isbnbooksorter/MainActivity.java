@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.camera.view.PreviewView;
@@ -53,6 +54,16 @@ public final class MainActivity extends ComponentActivity {
         BOOK_DETAIL
     }
 
+    private static final class PageState {
+        final AppPage page;
+        final Book book;
+
+        PageState(AppPage page, Book book) {
+            this.page = page;
+            this.book = book;
+        }
+    }
+
     private BookRepository repository;
     private BibliographyClient client;
     private ScannerController scanner;
@@ -74,6 +85,7 @@ public final class MainActivity extends ComponentActivity {
     private AppPage currentPage = AppPage.ISBN_SEARCH;
     private Book selectedBook;
     private final List<Book> currentVisibleBooks = new ArrayList<>();
+    private final List<PageState> pageHistory = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +109,13 @@ public final class MainActivity extends ComponentActivity {
                         exportVisibleBooks(uri);
                     }
                 });
-        showSearchPage();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackPressed();
+            }
+        });
+        navigateTo(AppPage.ISBN_SEARCH, null, false);
         if (hasCameraPermission()) {
             status("카메라 준비 완료. ISBN 바코드를 화면에 맞춰주세요.", UiKit.TEXT_SECONDARY);
         } else {
@@ -118,9 +136,14 @@ public final class MainActivity extends ComponentActivity {
 
     private View createContent() {
         resetPageViews();
+        FrameLayout screen = new FrameLayout(this);
+        screen.setBackgroundColor(UiKit.SURFACE_PRIMARY);
         pageScroll = new ScrollView(this);
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
+        screen.addView(pageScroll, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
         LinearLayout root = ui.column(12);
         root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), pageBottomPadding());
         pageScroll.addView(root);
@@ -149,7 +172,8 @@ public final class MainActivity extends ComponentActivity {
                 renderSearchPage(root);
                 break;
         }
-        return pageScroll;
+        screen.addView(createBottomMenu(), bottomMenuParams());
+        return screen;
     }
 
     private int headerTopPadding() {
@@ -159,11 +183,43 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private int pageBottomPadding() {
+        return bottomMenuHeight() + ui.dp(20);
+    }
+
+    private int navigationBarHeight() {
         int navigationBarId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-        int navigationBarHeight = navigationBarId > 0
-                ? getResources().getDimensionPixelSize(navigationBarId)
-                : 0;
-        return navigationBarHeight + ui.dp(24);
+        return navigationBarId > 0 ? getResources().getDimensionPixelSize(navigationBarId) : 0;
+    }
+
+    private int bottomMenuHeight() {
+        return ui.dp(72) + navigationBarHeight();
+    }
+
+    private FrameLayout.LayoutParams bottomMenuParams() {
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                bottomMenuHeight());
+        params.gravity = android.view.Gravity.BOTTOM;
+        return params;
+    }
+
+    private View createBottomMenu() {
+        LinearLayout menu = ui.row(8);
+        menu.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), navigationBarHeight() + ui.dp(10));
+        menu.setBackgroundColor(UiKit.SURFACE_SECONDARY);
+        Button searchButton = bottomMenuButton(CatalogUiContract.MENU_ISBN_SEARCH, currentPage == AppPage.ISBN_SEARCH);
+        searchButton.setOnClickListener(view -> showSearchPage());
+        Button libraryButton = bottomMenuButton(CatalogUiContract.MENU_LIBRARY, currentPage == AppPage.LIBRARY);
+        libraryButton.setOnClickListener(view -> showLibraryPage());
+        menu.addView(searchButton);
+        menu.addView(libraryButton);
+        return menu;
+    }
+
+    private Button bottomMenuButton(String label, boolean active) {
+        Button button = active ? ui.button(label) : ui.secondaryButton(label);
+        button.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1));
+        return button;
     }
 
     private void renderSearchPage(LinearLayout root) {
@@ -366,24 +422,52 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void showSearchPage() {
-        shutdownScanner();
-        currentPage = AppPage.ISBN_SEARCH;
-        selectedBook = null;
-        setContentView(createContent());
+        navigateTo(AppPage.ISBN_SEARCH, null, true);
     }
 
     private void showLibraryPage() {
-        shutdownScanner();
-        currentPage = AppPage.LIBRARY;
-        selectedBook = null;
-        setContentView(createContent());
+        navigateTo(AppPage.LIBRARY, null, true);
     }
 
     private void showDetailPage(Book book) {
+        navigateTo(AppPage.BOOK_DETAIL, book, true);
+    }
+
+    private void navigateTo(AppPage page, Book book, boolean recordHistory) {
+        if (recordHistory && shouldRecordHistory(page, book)) {
+            pageHistory.add(new PageState(currentPage, selectedBook));
+        }
         shutdownScanner();
-        currentPage = AppPage.BOOK_DETAIL;
+        currentPage = page;
         selectedBook = book;
         setContentView(createContent());
+    }
+
+    private boolean shouldRecordHistory(AppPage nextPage, Book nextBook) {
+        if (currentPage != nextPage) {
+            return true;
+        }
+        if (currentPage != AppPage.BOOK_DETAIL) {
+            return false;
+        }
+        return selectedBook == null || nextBook == null || !selectedBook.isbn.equals(nextBook.isbn);
+    }
+
+    private void handleBackPressed() {
+        if (menuPopup != null && menuPopup.isShowing()) {
+            dismissMenu();
+            return;
+        }
+        if (!pageHistory.isEmpty()) {
+            PageState previous = pageHistory.remove(pageHistory.size() - 1);
+            navigateTo(previous.page, previous.book, false);
+            return;
+        }
+        if (currentPage != AppPage.ISBN_SEARCH) {
+            navigateTo(AppPage.ISBN_SEARCH, null, false);
+            return;
+        }
+        finish();
     }
 
     private void renderKeyStatus(LinearLayout root) {
