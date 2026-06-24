@@ -1,7 +1,9 @@
 package com.andy.isbnbooksorter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -57,6 +59,14 @@ public final class CsvExporterTest {
         assertEquals(
                 "ISBN,Title,Subtitle,Authors,Translators,Publisher,Published Date,Category,Source,Description,Table Of Contents,Contents,Introduction,Page Count,Thumbnail URL,Language,Price,Book Size,Form,Form Detail,Series Title,Series No,Related ISBN,Title URL,EA ISBN,EA Add Code,Input Date,Update Date,BIB YN,Deposit YN,Ebook YN,Saved At\r\n",
                 CsvExporter.exportBooks(Collections.emptyList()));
+    }
+
+    @Test
+    public void exportBooksAsUtf8BomBytesStartsWithBomForSpreadsheetCompatibility() {
+        byte[] bytes = CsvExporter.exportBooksAsUtf8BomBytes(Collections.emptyList());
+
+        assertArrayEquals(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}, Arrays.copyOf(bytes, 3));
+        assertEquals(CsvExporter.exportBooks(Collections.emptyList()), new String(bytes, 3, bytes.length - 3, StandardCharsets.UTF_8));
     }
 
     @Test

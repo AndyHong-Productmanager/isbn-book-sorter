@@ -1,9 +1,11 @@
 package com.andy.isbnbooksorter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 final class CsvExporter {
     private static final String LINE_ENDING = "\r\n";
+    private static final byte[] UTF_8_BOM = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
     private static final String[] HEADER = {
             "ISBN",
             "Title",
@@ -81,6 +83,14 @@ final class CsvExporter {
             });
         }
         return builder.toString();
+    }
+
+    static byte[] exportBooksAsUtf8BomBytes(List<Book> books) {
+        byte[] csvBytes = exportBooks(books).getBytes(StandardCharsets.UTF_8);
+        byte[] output = new byte[UTF_8_BOM.length + csvBytes.length];
+        System.arraycopy(UTF_8_BOM, 0, output, 0, UTF_8_BOM.length);
+        System.arraycopy(csvBytes, 0, output, UTF_8_BOM.length, csvBytes.length);
+        return output;
     }
 
     private static void appendRow(StringBuilder builder, String[] cells) {

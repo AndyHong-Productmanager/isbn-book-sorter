@@ -37,7 +37,6 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -755,13 +754,12 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void exportVisibleBooks(Uri uri, String savedLocation) {
-        String csv = CsvExporter.exportBooks(currentVisibleBooks);
         try (OutputStream stream = getContentResolver().openOutputStream(uri)) {
             if (stream == null) {
                 status("CSV 파일을 열 수 없습니다.", UiKit.STATUS_ERROR);
                 return;
             }
-            stream.write(csv.getBytes(StandardCharsets.UTF_8));
+            stream.write(CsvExporter.exportBooksAsUtf8BomBytes(currentVisibleBooks));
             String locationNote = savedLocation == null ? "" : " (" + savedLocation + ")";
             status("현재 목록 " + currentVisibleBooks.size() + "권을 CSV로 내보냈습니다." + locationNote, UiKit.ACCENT_PRIMARY);
         } catch (Exception exception) {
