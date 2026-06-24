@@ -72,6 +72,7 @@ All spacing derives from a base of 4dp.
 ### Grid
 
 - Single-column mobile layout.
+- Header controls start below the status bar safe area; the menu trigger sits at the upper-left before the title.
 - Scanner preview uses a stable 4:3 frame.
 - Grouped book records are full width with fixed internal rhythm.
 

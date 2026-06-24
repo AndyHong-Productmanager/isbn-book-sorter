@@ -112,17 +112,17 @@ public final class MainActivity extends ComponentActivity {
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
         LinearLayout root = ui.column(20);
-        root.setPadding(ui.dp(16), ui.dp(18), ui.dp(16), ui.dp(24));
+        root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), ui.dp(24));
         pageScroll.addView(root);
 
         LinearLayout header = ui.row(12);
-        TextView title = ui.text(CatalogUiContract.APP_TITLE, 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
-        title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         Button menuButton = ui.button(CatalogUiContract.MENU_TOGGLE);
         menuButton.setMinWidth(ui.dp(104));
         menuButton.setOnClickListener(view -> toggleMenu());
-        header.addView(title);
+        TextView title = ui.text(CatalogUiContract.APP_TITLE, 24, UiKit.TEXT_PRIMARY, Typeface.BOLD);
+        title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         header.addView(menuButton);
+        header.addView(title);
         root.addView(header);
         root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
         renderMenu(root);
@@ -140,6 +140,12 @@ public final class MainActivity extends ComponentActivity {
                 break;
         }
         return pageScroll;
+    }
+
+    private int headerTopPadding() {
+        int statusBarId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        int statusBarHeight = statusBarId > 0 ? getResources().getDimensionPixelSize(statusBarId) : 0;
+        return statusBarHeight + ui.dp(24);
     }
 
     private void renderSearchPage(LinearLayout root) {
