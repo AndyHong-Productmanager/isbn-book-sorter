@@ -132,7 +132,7 @@ final class Book {
         this.translators = clean(translators);
         this.publisher = clean(publisher);
         this.publishedDate = clean(publishedDate);
-        this.category = defaultValue(category, "미분류");
+        this.category = CategoryClassifier.displayName(category);
         this.source = clean(source);
         this.description = clean(description);
         this.tableOfContents = clean(tableOfContents);

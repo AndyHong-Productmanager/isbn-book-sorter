@@ -59,7 +59,7 @@ public final class MainActivity extends ComponentActivity {
     private EditText isbnInput;
     private EditText categoryInput;
     private EditText savedSearchInput;
-    private EditText savedCategoryFilterInput;
+    private Spinner categoryFilterSpinner;
     private Spinner sortSpinner;
     private BookListQuery.Sort currentSort = BookListQuery.Sort.SAVED_NEWEST;
     private AppPage currentPage = AppPage.ISBN_SEARCH;
@@ -111,8 +111,8 @@ public final class MainActivity extends ComponentActivity {
         pageScroll = new ScrollView(this);
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(UiKit.SURFACE_PRIMARY);
-        LinearLayout root = ui.column(20);
-        root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), ui.dp(24));
+        LinearLayout root = ui.column(12);
+        root.setPadding(ui.dp(16), headerTopPadding(), ui.dp(16), ui.dp(16));
         pageScroll.addView(root);
 
         LinearLayout header = ui.row(12);
@@ -124,7 +124,9 @@ public final class MainActivity extends ComponentActivity {
         header.addView(menuButton);
         header.addView(title);
         root.addView(header);
-        root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        if (currentPage == AppPage.ISBN_SEARCH) {
+            root.addView(ui.text(CatalogUiContract.APP_SUBTITLE, 14, UiKit.TEXT_SECONDARY, Typeface.NORMAL));
+        }
         renderMenu(root);
 
         switch (currentPage) {
@@ -145,7 +147,7 @@ public final class MainActivity extends ComponentActivity {
     private int headerTopPadding() {
         int statusBarId = getResources().getIdentifier("status_bar_height", "dimen", "android");
         int statusBarHeight = statusBarId > 0 ? getResources().getDimensionPixelSize(statusBarId) : 0;
-        return statusBarHeight + ui.dp(24);
+        return statusBarHeight + ui.dp(12);
     }
 
     private void renderSearchPage(LinearLayout root) {
@@ -198,13 +200,13 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void renderLibraryPage(LinearLayout root) {
-        LinearLayout libraryPage = ui.column(12);
+        LinearLayout libraryPage = ui.column(8);
         root.addView(libraryPage);
         TextView listTitle = ui.text(CatalogUiContract.LIBRARY_TITLE, 18, UiKit.TEXT_PRIMARY, Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        titleParams.setMargins(0, ui.dp(18), 0, ui.dp(6));
+        titleParams.setMargins(0, ui.dp(8), 0, ui.dp(2));
         listTitle.setLayoutParams(titleParams);
         libraryPage.addView(listTitle);
         libraryPage.addView(ui.text(CatalogUiContract.SAVED_BOOKS_TITLE, 13, UiKit.TEXT_SECONDARY, Typeface.BOLD));
@@ -224,11 +226,16 @@ public final class MainActivity extends ComponentActivity {
 
         Button backButton = ui.button(CatalogUiContract.BACK_TO_LIBRARY);
         backButton.setOnClickListener(view -> showLibraryPage());
+        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        backParams.setMargins(0, 0, 0, ui.dp(4));
+        backButton.setLayoutParams(backParams);
         root.addView(backButton);
         root.addView(ui.text(CatalogUiContract.BOOK_DETAIL_TITLE, 20, UiKit.TEXT_PRIMARY, Typeface.BOLD));
 
-        LinearLayout content = ui.column(8);
-        content.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(24));
+        LinearLayout content = ui.column(6);
+        content.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(16));
         content.setBackgroundColor(UiKit.SURFACE_SECONDARY);
         root.addView(content);
         addDetail(content, "제목", book.title);
@@ -276,7 +283,7 @@ public final class MainActivity extends ComponentActivity {
         isbnInput = null;
         categoryInput = null;
         savedSearchInput = null;
-        savedCategoryFilterInput = null;
+        categoryFilterSpinner = null;
         sortSpinner = null;
         bookListRenderer = null;
     }
@@ -340,8 +347,8 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void renderManualInput(LinearLayout root) {
-        LinearLayout panel = ui.column(8);
-        panel.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
+        LinearLayout panel = ui.column(6);
+        panel.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10));
         panel.setBackgroundColor(UiKit.SURFACE_SECONDARY);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -373,7 +380,14 @@ public final class MainActivity extends ComponentActivity {
         panel.setLayoutParams(params);
 
         savedSearchInput = ui.input(CatalogUiContract.SAVED_SEARCH_HINT);
-        savedCategoryFilterInput = ui.input(CatalogUiContract.SAVED_CATEGORY_FILTER_HINT);
+        categoryFilterSpinner = new Spinner(this);
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                categoryFilterLabels(repository.listAll()));
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categoryFilterSpinner.setAdapter(categoryAdapter);
+        categoryFilterSpinner.setMinimumHeight(ui.dp(48));
         sortSpinner = new Spinner(this);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
@@ -394,7 +408,7 @@ public final class MainActivity extends ComponentActivity {
         clearButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         clearButton.setOnClickListener(view -> {
             savedSearchInput.setText("");
-            savedCategoryFilterInput.setText("");
+            categoryFilterSpinner.setSelection(0);
             sortSpinner.setSelection(0);
             currentSort = BookListQuery.Sort.SAVED_NEWEST;
             renderBooks();
@@ -409,7 +423,7 @@ public final class MainActivity extends ComponentActivity {
         exportButton.setOnClickListener(view -> startCsvExport());
 
         panel.addView(savedSearchInput);
-        panel.addView(savedCategoryFilterInput);
+        panel.addView(categoryFilterSpinner);
         panel.addView(sortSpinner);
         panel.addView(actions);
         panel.addView(exportButton);
@@ -499,7 +513,7 @@ public final class MainActivity extends ComponentActivity {
         List<Book> allBooks = repository.listAll();
         BookListQuery.Options options = new BookListQuery.Options(
                 textFrom(savedSearchInput),
-                textFrom(savedCategoryFilterInput),
+                selectedCategoryFilter(),
                 currentSort);
         List<Book> visibleBooks = BookListQuery.apply(allBooks, options);
         currentVisibleBooks.clear();
@@ -509,6 +523,26 @@ public final class MainActivity extends ComponentActivity {
                 ? CatalogUiContract.EMPTY_LIBRARY_MESSAGE
                 : CatalogUiContract.EMPTY_FILTERED_MESSAGE;
         bookListRenderer.render(visibleBooks, emptyMessage, currentSort == BookListQuery.Sort.CATEGORY && !hasActiveFilter);
+    }
+
+    private List<String> categoryFilterLabels(List<Book> books) {
+        List<String> labels = new ArrayList<>();
+        labels.add(CatalogUiContract.ALL_CATEGORIES);
+        for (Book book : books) {
+            if (book.category.isEmpty() || labels.contains(book.category)) {
+                continue;
+            }
+            labels.add(book.category);
+        }
+        return labels;
+    }
+
+    private String selectedCategoryFilter() {
+        if (categoryFilterSpinner == null || categoryFilterSpinner.getSelectedItemPosition() <= 0) {
+            return "";
+        }
+        Object selected = categoryFilterSpinner.getSelectedItem();
+        return selected == null ? "" : selected.toString().trim();
     }
 
     private void status(String message, int color) {

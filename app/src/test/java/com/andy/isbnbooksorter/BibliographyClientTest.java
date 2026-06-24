@@ -42,6 +42,7 @@ public final class BibliographyClientTest {
         doc.put("AUTHOR", "저자");
         doc.put("PUBLISHER", "출판사");
         doc.put("REAL_PUBLISH_DATE", "20260101");
+        doc.put("SUBJECT", "2");
         doc.put("BOOK_TB_CNT", "1장 목차");
         doc.put("BOOK_SUMMARY", "내용 요약");
         doc.put("BOOK_INTRODUCTION", "책 소개");
@@ -76,6 +77,7 @@ public final class BibliographyClientTest {
         assertEquals("단행본", book.formDetail);
         assertEquals("총서", book.seriesTitle);
         assertEquals("3", book.seriesNo);
+        assertEquals("종교", book.category);
         assertEquals("9790000000000", book.relatedIsbn);
         assertEquals("https://example.com/title", book.titleUrl);
         assertEquals("9791198048356", book.eaIsbn);

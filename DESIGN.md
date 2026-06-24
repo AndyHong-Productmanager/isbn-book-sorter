@@ -73,6 +73,7 @@ All spacing derives from a base of 4dp.
 
 - Single-column mobile layout.
 - Header controls start below the status bar safe area; the menu trigger sits at the upper-left before the title.
+- Library and detail pages omit the search-page helper subtitle and use compact vertical rhythm so navigation actions stay close to the header.
 - Scanner preview uses a stable 4:3 frame.
 - Grouped book records are full width with fixed internal rhythm.
 
@@ -96,7 +97,7 @@ All spacing derives from a base of 4dp.
 - **Variants**: populated, empty.
 - **Spacing**: --space-3 and --space-4.
 - **States**: empty state explains how to add the first book; populated rows are clickable and open a full bibliographic detail view.
-- **Accessibility**: title, author, publisher, ISBN, and source are visible text.
+- **Accessibility**: title, author, publisher, ISBN, normalized KDC category name, and source are visible text. Library category filtering uses a dropdown of stored categories.
 - **Motion**: none.
 
 ### Book Detail Page

@@ -18,6 +18,7 @@ public final class CatalogUiContractTest {
         assertEquals("카테고리 직접 지정(선택)", CatalogUiContract.CATEGORY_INPUT_HINT);
         assertEquals("저장된 책 검색(제목/저자/출판사/ISBN/분류/출처)", CatalogUiContract.SAVED_SEARCH_HINT);
         assertEquals("카테고리 필터", CatalogUiContract.SAVED_CATEGORY_FILTER_HINT);
+        assertEquals("전체 카테고리", CatalogUiContract.ALL_CATEGORIES);
         assertEquals("적용", CatalogUiContract.APPLY_FILTERS);
         assertEquals("초기화", CatalogUiContract.CLEAR_FILTERS);
         assertEquals("현재 목록 CSV 내보내기", CatalogUiContract.EXPORT_VISIBLE_CSV);

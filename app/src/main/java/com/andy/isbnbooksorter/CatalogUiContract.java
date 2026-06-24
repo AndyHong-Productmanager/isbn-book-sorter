@@ -14,6 +14,7 @@ final class CatalogUiContract {
     static final String SAVED_BOOKS_TITLE = "저장된 책";
     static final String SAVED_SEARCH_HINT = "저장된 책 검색(제목/저자/출판사/ISBN/분류/출처)";
     static final String SAVED_CATEGORY_FILTER_HINT = "카테고리 필터";
+    static final String ALL_CATEGORIES = "전체 카테고리";
     static final String APPLY_FILTERS = "적용";
     static final String CLEAR_FILTERS = "초기화";
     static final String EXPORT_VISIBLE_CSV = "현재 목록 CSV 내보내기";
